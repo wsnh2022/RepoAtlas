@@ -9,13 +9,13 @@ RepoAtlas is one page that shows the state of every git project on your computer
 
 You do not need to know git to use it. Double-click one file, wait a minute, and your browser opens a report that tells you in plain words which projects are safe and which need attention.
 
+![RepoAtlas report: repo count, backup status, work state and disk space on one page](05-docs/snapshot-repoatlas.png)
+
 ---
 
 ## 1. Why this exists
 
 Git can tell you the state of **one** project at a time. Nothing tells you the state of **all** of them.
-
-![RepoAtlas report: repo count, backup status, work state and disk space on one page](05-docs/snapshot-repoatlas.png)
 
 Over the years, code spreads across folders, drives and half-forgotten experiments. To know whether any of it is at risk, you would have to open every folder and run several commands in each. Almost nobody does, so problems stay hidden until the day a laptop dies, a disk is wiped or a folder is deleted by mistake, and work that only ever lived on that computer is gone.
 
