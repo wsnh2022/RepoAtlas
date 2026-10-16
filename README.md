@@ -70,6 +70,46 @@ RepoAtlas does that checking for every project in one pass and puts the answer o
 
 Stuck? Open `01-Windows/02-Windows-help.md` or `02-Mac/02-Mac-help.md`.
 
+### Step by step: Windows
+
+```mermaid
+flowchart TD
+    A["Install git from git-scm.com/downloads"] --> B["Open Command Prompt or PowerShell"]
+    B --> C["Go to the folder where you want RepoAtlas<br/>example: cd D:\Code"]
+    C --> D["Run: git clone https://github.com/wsnh2022/RepoAtlas.git"]
+    D --> E["Run: cd RepoAtlas"]
+    E --> F["Open the 01-Windows folder"]
+    F --> G["Double-click 01-Run-on-Windows.bat"]
+    G --> H{"Blue 'Windows protected your PC' screen?"}
+    H -- Yes --> I["Click More info, then Run anyway"]
+    H -- No --> J["Answer any questions in the black window"]
+    I --> J
+    J --> K["Wait a minute while it scans"]
+    K --> L["Your browser opens the report<br/>also saved as 04-reports/repos.html"]
+    L --> M["Later: run git pull to get updates"]
+```
+
+### Step by step: Mac
+
+```mermaid
+flowchart TD
+    A["Open Terminal"] --> B["Go to the folder where you want RepoAtlas<br/>example: cd ~/Code"]
+    B --> C["Run: git clone https://github.com/wsnh2022/RepoAtlas.git"]
+    C --> D{"Apple asks to install command line tools?"}
+    D -- Yes --> E["Click Install, wait, then run the clone again"]
+    D -- No --> F["Run: cd RepoAtlas"]
+    E --> F
+    F --> G["Open the 02-Mac folder in Finder"]
+    G --> H["Double-click 01-Run-on-Mac.command"]
+    H --> I{"macOS says it can't be opened?"}
+    I -- Yes --> J["Right-click the file, choose Open, then Open again"]
+    I -- No --> K["Answer any questions in the Terminal window"]
+    J --> K
+    K --> L["Wait a minute while it scans"]
+    L --> M["Your browser opens the report<br/>also saved as 04-reports/repos.html"]
+    M --> N["Later: run git pull to get updates"]
+```
+
 ---
 
 ## 3. How to read the report
