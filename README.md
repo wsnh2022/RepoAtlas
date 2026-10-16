@@ -1,3 +1,4 @@
+![RepoAtlas cover](05-docs/cover.png)
 # RepoAtlas
 
 **See every git repo on your computer, and what is at risk.**
