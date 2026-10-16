@@ -1,0 +1,8 @@
+{
+  "root":   ["D:\\Projects", "E:\\Work"],
+  "skip":   ["old", "backup"],
+  "user":   "your-github-name",
+  "owners": ["your-org"],
+  "ignoreUntracked": false,
+  "noStatus": false
+}

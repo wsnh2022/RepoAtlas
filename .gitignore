@@ -1,0 +1,41 @@
+# RepoAtlas - keep personal and generated files out of git.
+# Push this folder as it is: the tool, the launchers and the docs are meant to be shared.
+
+# Your own settings: your GitHub username, owner names and scan folders
+03-my-settings/repoatlas.config.json
+03-my-settings/findrepos.config.json
+repoatlas.config.json
+findrepos.config.json
+
+# Generated reports: real repo names, folder paths, branch names and account names.
+# This includes the shareable copy; share that file by hand, not through git.
+04-reports/
+repos.html
+repos-shared.html
+repoatlas-report.html
+repoatlas-shared-report.html
+
+# Remembered answers (which installs you declined)
+repoatlas.state.json
+findrepos.state.json
+
+# Secrets and keys, in case a file lands in this folder by mistake
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.token
+credentials*.json
+secrets*.json
+
+# Operating system and editor leftovers
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/
