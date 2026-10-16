@@ -8,8 +8,8 @@ repoatlas.config.json
 findrepos.config.json
 
 # Generated reports: real repo names, folder paths, branch names and account names.
+# The 04-reports folder itself is tracked (it holds the public demo), but your own reports are not.
 # This includes the shareable copy; share that file by hand, not through git.
-04-reports/
 repos.html
 repos-shared.html
 repoatlas-report.html

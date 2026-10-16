@@ -1,0 +1,1104 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RepoAtlas</title>
+<style>
+  :root {
+    --bg:#f6f7f9; --card:#ffffff; --text:#1c2128; --muted:#6b7280; --line:#e3e6ea;
+    --accent:#2563eb; --broken:#dc2626; --local:#b45309; --mine:#15803d; --third:#7c3aed; --other:#0e7490; --error:#6b7280;
+    --hbg:#0f1b2a; --hline:#26384e; --htext:#eaf0f7; --hmuted:#a9b8c9; --hsignal:#5ab0ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1318; --card:#171c23; --text:#e6e9ee; --muted:#8b95a3; --line:#262d37; --accent:#60a5fa; }
+  }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 system-ui, "Segoe UI", sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:20px 16px 64px; }
+
+  /* ---- top section: dark band with the status strip ---- */
+  .hero { background:var(--hbg); color:var(--htext); border-bottom:1px solid var(--hline); }
+  .hero-in { max-width:1100px; margin:0 auto; padding:20px 16px 26px; }
+  .hero-top { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:12px 16px; margin-bottom:20px; }
+  .brand { flex:1 1 420px; min-width:0; display:flex; align-items:center; gap:16px; }
+  .mark { flex:none; width:56px; height:56px; border-radius:15px; display:inline-flex; align-items:center; justify-content:center;
+    color:var(--hsignal); background:rgba(90,176,255,.12); border:1px solid rgba(90,176,255,.35); }
+  .bt { min-width:0; }
+  .hero h1 { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 12px; margin:0; font-size:clamp(30px, 4.4vw, 42px); font-weight:700; line-height:1.05; letter-spacing:-.015em; color:#fff; }
+  .ver { font-size:12.5px; font-weight:600; letter-spacing:0; color:var(--hsignal); border:1px solid rgba(90,176,255,.45); border-radius:999px; padding:2px 9px; align-self:center; }
+  .tag { margin:8px 0 0; color:#d3deea; font-size:clamp(15px, 1.6vw, 17px); line-height:1.4; max-width:62ch; }
+  .by { margin:6px 0 0; color:var(--hmuted); font-size:13px; }
+  .by b { color:var(--htext); font-weight:600; }
+  .credit { margin:44px 0 0; padding-top:16px; border-top:1px solid var(--line); text-align:center; color:var(--muted); font-size:12.5px; }
+  .credit b { color:var(--text); font-weight:600; }
+  .acts { display:flex; flex-wrap:wrap; gap:8px; }
+  .ico { display:inline-flex; flex:none; }
+  .howbtn { color:var(--hsignal); }
+  .howpanel { margin:0 0 20px; padding:14px 16px; background:var(--panel); border:1px solid #2f455f; border-radius:12px; }
+  .howpanel p { margin:0 0 10px; font-size:14px; line-height:1.6; color:#d3deea; max-width:76ch; }
+  .howl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:6px 16px; font-size:13px; color:var(--hmuted); }
+  .howl dt { color:var(--htext); font-weight:600; }
+  .howl dd { margin:0; }
+
+  /* 1. how many, and where they stand */
+  .health { display:grid; grid-template-columns:auto minmax(0,1fr); gap:0 28px; align-items:end; }
+  .count { display:flex; align-items:baseline; gap:8px; }
+  .big { font-family:Bahnschrift, "DIN Alternate", "DIN Condensed", "Avenir Next Condensed", "Arial Narrow", system-ui, sans-serif;
+    font-size:clamp(64px,8vw,84px); font-weight:600; font-stretch:85%; line-height:.85; letter-spacing:-.01em;
+    font-variant-numeric:tabular-nums; }
+  .unit { font-size:15px; color:var(--hmuted); }
+  .strip { display:flex; gap:3px; height:42px; }
+  .seg { flex:1 1 0; min-width:18px; border:0; border-radius:7px; padding:0 0 0 10px; display:flex; align-items:center;
+    color:#fff; font:600 14px/1 system-ui, "Segoe UI", sans-serif; cursor:pointer;
+    transition:opacity .15s, filter .15s; }
+  .seg.nolabel .segn { display:none; }
+  .seg:hover { filter:brightness(1.12); }
+  .seg:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  .seg.on { box-shadow:0 0 0 2px var(--hbg), 0 0 0 4px #fff; }
+  .seg.dim, .k.dim { opacity:.38; }
+  .key { display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:11px; font-size:13px; color:var(--hmuted); }
+  .k { display:inline-flex; align-items:center; gap:7px; cursor:pointer; transition:opacity .15s; }
+  .k i { width:18px; height:18px; border-radius:5px; flex:none; display:inline-flex; align-items:center; justify-content:center; color:#fff; }
+  .k b { color:var(--htext); font-weight:600; }
+  .k.twice i { background:#3a5270; }
+  .k.twice.on b, .k.twice.on { color:var(--hsignal); }
+
+  /* 2. what to do first */
+  .start { display:flex; align-items:center; gap:14px; width:100%; margin:20px 0 22px; text-align:left; font:inherit; color:var(--htext);
+    background:rgba(248,113,113,.12); border:1px solid rgba(248,113,113,.45); border-left:4px solid #f87171; border-radius:10px; padding:11px 14px; }
+  .start > .ico { color:#f87171; }
+  .start p { margin:0; flex:1; font-size:14.5px; line-height:1.45; }
+  .start p span { color:var(--hmuted); font-size:13px; margin-left:4px; }
+  .start .go { display:inline-flex; align-items:center; gap:6px; flex:none; background:#f87171; color:#2a0b0b; font-weight:600; border-radius:8px; padding:6px 12px; font-size:13px; }
+  .start.warn { background:rgba(251,191,36,.10); border-color:rgba(251,191,36,.4); border-left-color:#fbbf24; }
+  .start.warn > .ico { color:#fbbf24; }
+  .start.warn .go { background:#fbbf24; color:#2b1d02; }
+  .start.good { background:rgba(74,222,128,.09); border-color:rgba(74,222,128,.35); border-left-color:#4ade80; }
+  .start.good > .ico { color:#4ade80; }
+  .start.info { background:transparent; border-color:#2f455f; border-left-color:var(--hsignal); }
+  .start.info > .ico { color:var(--hsignal); }
+  button.start { cursor:pointer; transition:filter .15s; }
+  button.start:hover { filter:brightness(1.15); }
+  button.start:focus-visible { outline:2px solid var(--hsignal); outline-offset:2px; }
+  button.start.on .go { background:transparent; color:var(--htext); box-shadow:inset 0 0 0 1px currentColor; }
+
+  /* 3. work state: each tile is a filter */
+  .lab { display:flex; flex-wrap:wrap; align-items:center; gap:2px 10px; margin:0 0 9px; color:var(--hmuted); font-size:12.5px; }
+  .lab h2 { display:flex; align-items:center; gap:7px; margin:0; font-size:12.5px; font-weight:600; }
+  .lab h2 svg { color:var(--hsignal); }
+  .lab span { white-space:normal; }
+  .nw { white-space:nowrap; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; }
+  .wt { display:flex; flex-direction:column; justify-content:flex-start; align-items:stretch; width:100%; text-align:left; border:1px solid #2f455f; background:var(--panel); color:var(--htext); border-radius:12px;
+    padding:12px 14px; font:inherit; cursor:pointer; transition:background .15s, border-color .15s, opacity .15s; }
+  .wt.off { border-style:dashed; background:transparent; }
+  .th { display:flex; align-items:center; gap:8px; }
+  .ib { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:rgba(255,255,255,.08); color:var(--ic, var(--hsignal)); }
+  .tl { font-size:13px; font-weight:600; }
+  .tn { margin:8px 0 2px; font:600 32px/1.1 Bahnschrift, "DIN Alternate", "Arial Narrow", system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+  .ts { font-size:12px; color:var(--hmuted); line-height:1.35; }
+  .wt:hover:not(:disabled) { border-color:var(--hsignal); }
+  .wt:focus-visible { outline:2px solid var(--hsignal); outline-offset:2px; }
+  .wt.on { background:var(--hsignal); border-color:var(--hsignal); color:#08131f; }
+  .wt.on .ib { background:rgba(8,19,31,.14); color:#08131f; }
+  .wt.on .ts { color:#16324d; }
+  .wt:disabled { opacity:.45; cursor:default; }
+  /* 4. disk space: one card, a big total, a bar and a legend */
+  #disk { margin-top:24px; }
+  .dcard { display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 28px; align-items:center; background:var(--panel); border:1px solid #2f455f; border-radius:12px; padding:16px 18px; }
+  .dtot b { display:block; font:600 34px/1 Bahnschrift, "DIN Alternate", "Arial Narrow", system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+  .dtot small { display:block; margin-top:6px; color:var(--hmuted); font-size:12.5px; line-height:1.4; max-width:15ch; }
+  .dbar { display:flex; height:16px; border-radius:8px; overflow:hidden; gap:2px; background:#1b2b40; }
+  .dbar i { display:block; height:100%; min-width:3px; }
+  .dleg { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px 18px; margin-top:14px; }
+  .dleg > div { min-width:0; }
+  .dleg .dn { display:flex; align-items:baseline; gap:7px; font-size:13px; }
+  .dleg .dn i { width:11px; height:11px; border-radius:3px; flex:none; align-self:center; }
+  .dleg .dn b { font-size:15px; font-variant-numeric:tabular-nums; }
+  .dleg .dn span { color:var(--hmuted); font-size:12px; }
+  .dleg p { margin:2px 0 0 18px; color:var(--hmuted); font-size:12px; line-height:1.4; }
+  .d-own { background:var(--hsignal); } .d-git { background:#94a3b8; } .d-ign { background:#f59e0b; }
+  .d-un { background:repeating-linear-gradient(45deg, #64748b 0 4px, #94a3b8 4px 8px); }
+  .dcat { grid-column:1 / -1; padding-top:12px; margin-top:6px; border-top:1px solid var(--hline); }
+  .dcat h3 { margin:0 0 8px; font-size:13px; font-weight:600; color:var(--htext); }
+  .dcat h3 span { font-weight:400; color:var(--hmuted); margin-left:6px; font-size:12px; }
+  .dcr { display:grid; grid-template-columns:250px minmax(0,1fr) 130px; gap:4px 14px; align-items:center; width:100%; text-align:left; background:transparent; border:1px solid transparent; border-radius:8px; padding:7px 8px; color:var(--htext); font:inherit; cursor:pointer; }
+  .dcr:hover { background:#1b2b40; }
+  .dcr:focus-visible { outline:2px solid var(--hsignal); outline-offset:1px; }
+  .dcr.on { border-color:var(--hsignal); background:#1b2b40; }
+  .dcr.dim { opacity:.55; }
+  .dcr .cn { display:flex; align-items:center; gap:8px; min-width:0; font-size:13.5px; white-space:nowrap; }
+  .dcr .cn i { width:11px; height:11px; border-radius:3px; flex:none; }
+  .dcr .cn small { color:var(--hmuted); font-size:12px; white-space:nowrap; }
+  .dcr .ct { height:10px; border-radius:5px; background:#14233a; overflow:hidden; }
+  .dcr .cf { display:flex; height:100%; gap:1px; min-width:3px; }
+  .dcr .cf i { display:block; height:100%; min-width:1px; }
+  .dcr .cv { text-align:right; font-size:12px; color:var(--hmuted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .dcr .cv b { font-size:14px; color:var(--htext); margin-right:6px; }
+  .dtop { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding-top:12px; margin-top:4px; border-top:1px solid var(--hline); font-size:12.5px; color:var(--hmuted); }
+  .dchip { display:inline-flex; align-items:center; gap:7px; border:1px solid #3a5270; background:transparent; color:var(--htext); border-radius:999px; padding:4px 11px; font:inherit; font-size:12.5px; cursor:pointer; }
+  .dchip b { font-variant-numeric:tabular-nums; color:var(--hsignal); font-weight:600; }
+  .dchip:hover { border-color:var(--hsignal); }
+  .dchip:focus-visible { outline:2px solid var(--hsignal); outline-offset:2px; }
+  .dgo { margin-left:auto; }
+  .foot { display:grid; gap:8px; margin-top:22px; padding-top:14px; border-top:1px solid var(--hline); color:#c4d1e0; font-size:13px; line-height:1.5; }
+  .mi { display:flex; align-items:flex-start; gap:9px; min-width:0; overflow-wrap:anywhere; }
+  .mi svg { margin-top:3px; color:var(--hsignal); }
+  .mi b { color:var(--htext); font-weight:600; margin-right:4px; }
+  @media (prefers-reduced-motion:no-preference) {
+    .hero.intro .seg { animation:grow .7s cubic-bezier(.2,.7,.2,1) backwards; animation-delay:calc(var(--i) * 70ms); }
+  }
+  @keyframes grow { from { clip-path:inset(0 100% 0 0 round 7px); } to { clip-path:inset(0 0 0 0 round 7px); } }
+
+  /* search and filters stay in reach while scrolling */
+  .toolbar { position:sticky; top:0; z-index:10; background:var(--bg); border-bottom:1px solid transparent;
+    transition:border-color .15s, box-shadow .15s; }
+  .toolbar.stuck { border-bottom-color:var(--line); box-shadow:0 8px 14px -12px rgba(0,0,0,.45); }
+  .toolbar-in { max-width:1100px; margin:0 auto; padding:12px 16px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .shown { margin-left:auto; color:var(--muted); font-size:12.5px; }
+  .priv { display:inline-flex; align-items:center; gap:7px; margin-top:10px; border:1px solid #3a5270; background:transparent; color:var(--htext);
+    border-radius:999px; padding:6px 14px; font:inherit; font-size:13px; cursor:pointer; transition:background .15s, border-color .15s; }
+  .priv:hover { border-color:var(--hsignal); }
+  .priv:focus-visible { outline:2px solid var(--hsignal); outline-offset:2px; }
+  .priv.on { background:var(--hsignal); border-color:var(--hsignal); color:#08131f; }
+  .privacy { background:#16314d; border-bottom:1px solid var(--hline); color:var(--htext); font-size:13px; }
+  .privacy-in { max-width:1100px; margin:0 auto; padding:8px 16px; display:flex; align-items:center; gap:9px; }
+  .privacy svg { color:var(--hsignal); flex:none; }
+  input[type=search] { flex:1 1 240px; padding:9px 12px; border:1px solid var(--line); border-radius:8px;
+    background:var(--card); color:var(--text); font:inherit; }
+  .fc { display:inline-flex; align-items:center; gap:6px; border:0; background:var(--accent); color:#fff; border-radius:999px; padding:5px 6px 5px 12px; font:inherit; font-size:13px; cursor:pointer; }
+  .fc u { width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,.25); display:inline-flex; align-items:center; justify-content:center; text-decoration:none; font-size:13px; line-height:1; }
+  .fc:hover u { background:rgba(255,255,255,.4); }
+  .fc:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .fhint { color:var(--muted); font-size:12.5px; }
+  .chip { border:1px solid var(--line); background:var(--card); color:var(--text); padding:6px 12px;
+    border-radius:999px; cursor:pointer; font:inherit; font-size:13px; }
+  .chip.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .chip b { font-weight:600; opacity:.8; margin-left:4px; }
+  section { margin-bottom:26px; }
+  .gh { display:flex; align-items:center; gap:12px; margin:0 0 10px; }
+  .pill { display:inline-flex; align-items:center; gap:8px; color:#fff; font-size:18px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em; padding:5px 16px; border-radius:999px; }
+  .pill .n { background:rgba(255,255,255,.25); border-radius:999px; padding:0 9px; font-size:14px; }
+  .gh small { color:var(--muted); font-size:13px; font-weight:400; }
+  .tgs { margin-left:auto; display:flex; gap:8px; }
+  .tog { border:1px solid var(--line); background:var(--card); color:var(--text);
+    border-radius:999px; padding:5px 12px; font:inherit; font-size:13px; cursor:pointer; }
+  .tog:hover { border-color:var(--accent); }
+  .tog.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .dupset { border:1px dashed var(--muted); border-radius:12px; padding:8px 8px 2px; margin-bottom:12px; }
+  .dupset .dl { font-size:12px; color:var(--muted); margin:0 4px 6px; }
+  .row { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) auto; gap:12px; align-items:center;
+    background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin-bottom:6px; }
+  .name { font-weight:600; overflow-wrap:anywhere; }
+  .badge { font-size:11px; padding:1px 7px; border-radius:6px; margin-left:6px; background:var(--local); color:#fff; font-weight:500; }
+  .meta { min-width:0; }
+  .meta a { color:var(--accent); text-decoration:none; }
+  .meta a:hover { text-decoration:underline; }
+  .folder { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }
+  .row.hs { grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) 104px auto; }
+  .sz { min-width:0; cursor:help; }
+  .sz b { display:block; font-size:13.5px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .sz small { display:block; color:var(--muted); font-size:11px; }
+  .sbar { display:flex; height:6px; border-radius:3px; overflow:hidden; background:var(--line); margin-top:4px; gap:1px; }
+  .sbar i { display:block; height:100%; min-width:2px; }
+  .s-un { background:#94a3b8; opacity:.6; }
+  .s-own { background:var(--accent); } .s-git { background:#8b95a3; } .s-ign { background:#d97706; }
+  .szbox { margin:0 0 10px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:13px; }
+  .szbox .ch { margin:0 0 6px; }
+  .szl { display:grid; grid-template-columns:12px 1fr auto; gap:4px 10px; align-items:center; }
+  .szl i { width:12px; height:12px; border-radius:3px; display:block; }
+  .szl span:last-child { font-variant-numeric:tabular-nums; font-weight:600; }
+  .szbox p { margin:8px 0 0; color:var(--muted); font-size:12px; line-height:1.45; }
+  .tbsort { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; }
+  .tbsort select { font:inherit; color:var(--text); background:var(--card); border:1px solid var(--line); border-radius:8px; padding:5px 8px; }
+  .btns { display:flex; gap:6px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:98px;
+    border:1px solid var(--line); background:transparent; color:var(--text); border-radius:8px;
+    padding:6px 10px; font:inherit; font-size:12.5px; cursor:pointer; transition:background .12s, border-color .12s; }
+  .btn svg { flex:none; }
+  .btn:hover { border-color:var(--accent); color:var(--accent); }
+  .btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover { filter:brightness(1.1); color:#fff; }
+  .btn.done { background:var(--mine); border-color:var(--mine); color:#fff; }
+  .btn.on { border-color:var(--accent); color:var(--accent); }
+  /* work state on each repo */
+  .wstate { display:flex; flex-wrap:wrap; gap:4px 6px; margin-top:6px; }
+  .wc { display:inline-flex; align-items:center; gap:4px; border:1px solid var(--line); color:var(--muted); background:transparent;
+    border-radius:999px; padding:0 9px; font-size:11.5px; line-height:1.65; white-space:nowrap; cursor:default; }
+  .wc.br { color:var(--text); font-family:Consolas, "SF Mono", Menlo, monospace; font-size:11px; }
+  .wc.hot { color:var(--text); border-color:var(--muted); }
+  .wc.hot b { font-weight:700; }
+  .wc.bad { color:var(--broken); border-color:var(--broken); }
+  .err { margin:0 0 8px; padding:8px; background:var(--bg); border:1px solid var(--line); border-radius:6px;
+    font:12px/1.4 Consolas, monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .cheat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px; }
+  .cheat .ch { color:var(--muted); font-size:12px; margin-bottom:6px; }
+  .ci { padding:10px 0; border-top:1px solid var(--line); }
+  .ch + .ci { border-top:0; }
+  .ci .ct { font-weight:600; }
+  .ci .cd { color:var(--muted); font-size:12.5px; margin:2px 0 6px; }
+  .ci .cc { display:flex; gap:8px; align-items:center; }
+  .ci code { flex:1; min-width:0; background:var(--bg); border:1px solid var(--line); border-radius:6px;
+    padding:6px 8px; font:12.5px/1.4 Consolas, monospace; overflow-x:auto; white-space:nowrap; }
+  .empty { color:var(--muted); text-align:center; padding:40px 0; }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--bg);
+    padding:8px 14px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  @media (max-width:760px) {
+    .health { grid-template-columns:minmax(0,1fr); gap:14px; }
+    .mark { width:44px; height:44px; border-radius:12px; }
+    .brand { gap:12px; }
+    .start { flex-wrap:wrap; }
+    .tiles { grid-template-columns:1fr 1fr; }
+    .dcard { grid-template-columns:minmax(0,1fr); }
+    .dtot small { max-width:none; }
+    .dgo { margin-left:0; }
+    .dcr { grid-template-columns:minmax(0,1fr) auto; }
+    .dcr .ct { grid-column:1 / -1; order:3; }
+  }
+  @media (max-width:700px) {
+    .row, .row.hs { grid-template-columns:1fr; }
+    .toolbar { position:static; }
+    .shown { margin-left:0; }
+  }
+</style>
+</head>
+<body>
+<header class="hero intro" id="hero">
+  <div class="privacy" id="privacy" role="status" hidden>
+    <div class="privacy-in">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8s-2.4 4.5-6.5 4.5S1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/><path d="M2.5 2.5l11 11"/></svg>
+      <span id="privtxt"></span>
+    </div>
+  </div>
+  <div class="hero-in">
+    <div class="hero-top">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7.2 17.5 8.6M6.2 8 11 17.3M17.8 10 13 17.3"/><circle cx="5.5" cy="6.5" r="2.4" fill="currentColor" fill-opacity=".18"/><circle cx="18.5" cy="8.8" r="2.4" fill="currentColor" fill-opacity=".18"/><circle cx="12" cy="18.5" r="2.4" fill="currentColor" fill-opacity=".18"/></svg></span>
+        <div class="bt">
+          <h1>RepoAtlas<span class="ver" id="ver"></span></h1>
+          <p class="tag">See every git repo on your computer, and what is at risk.</p>
+          <p class="by">Created by <b>datacraft.yogi</b></p>
+        </div>
+      </div>
+      <div class="acts">
+        <button type="button" class="priv howbtn" id="howbtn" aria-expanded="false" aria-controls="how"><span class="ico" data-ico="help" data-s="15"></span>How it works</button>
+        <button type="button" class="priv" id="priv" aria-pressed="false"></button>
+      </div>
+    </div>
+    <div class="howpanel" id="how" hidden>
+      <p>A map of every git repo on this computer, checked against GitHub: what is backed up, what exists only on this computer, what has duplicate copies, and what has work pending to commit or push.</p>
+      <dl class="howl">
+        <dt>Colours</dt><dd>Click a colour in the bar to show only those repos.</dd>
+        <dt>Start here</dt><dd>The red or amber line is the most urgent thing. Click it to see those repos.</dd>
+        <dt>Work state</dt><dd>Pending to commit = edits or new files not saved in a commit yet (git calls this uncommitted). Pending to push = saved commits that are not on GitHub yet (unpushed). Unpulled = commits on the remote that you do not have yet.</dd>
+        <dt>Size</dt><dd>The number on each repo is the space its folder uses on disk. The bar splits it into your files (blue), git history (grey) and files git ignores, such as node_modules and builds (amber). Use Sort to put the largest first.</dd>
+        <dt>Copy cd</dt><dd>Paste in a terminal to jump into that repo.</dd>
+        <dt>Copy path</dt><dd>Copies just the folder path.</dd>
+        <dt>Commands</dt><dd>Shows commands filled in for that repo, ready to copy.</dd>
+        <dt>Duplicates only</dt><dd>Inside a group, shows repos that exist in more than one place.</dd>
+      </dl>
+    </div>
+    <div class="health">
+      <div class="count"><span class="big" id="big">0</span><span class="unit" id="unit"></span></div>
+      <div>
+        <div class="strip" id="strip" role="group" aria-label="Repos by status. Choose one to filter the list."></div>
+        <div class="key" id="key"></div>
+      </div>
+    </div>
+    <div id="startbox"></div>
+    <div id="work" hidden>
+      <div class="lab"><h2 id="h-work"><span class="ico" data-ico="commit" data-s="15"></span>Work state</h2><span id="workn"></span></div>
+      <div class="tiles" id="workb" role="group" aria-labelledby="h-work"></div>
+    </div>
+    <div id="disk" hidden>
+      <div class="lab"><h2 id="h-disk"><span class="ico" data-ico="drive" data-s="15"></span>Disk space</h2><span id="diskn"></span></div>
+      <div class="dcard">
+        <div class="dtot"><b id="dtot"></b><small id="dsub"></small></div>
+        <div><div class="dbar" id="dbar" role="img"></div><div class="dleg" id="dleg"></div></div>
+        <div class="dcat" id="dcat"></div>
+        <div class="dtop" id="dtop"></div>
+      </div>
+    </div>
+    <div class="foot">
+      <span class="mi" id="mi1"><span class="ico" data-ico="folder" data-s="14"></span><span><b>Scanned</b><span id="scan1"></span></span></span>
+      <span class="mi"><span class="ico" data-ico="clock" data-s="14"></span><span><b>Snapshot</b><span id="scan2"></span></span></span>
+    </div>
+  </div>
+</header>
+<div id="sentinel" style="height:1px"></div>
+<div class="toolbar" id="toolbar">
+  <div class="toolbar-in">
+    <input type="search" id="q" placeholder="Search name, remote, branch or folder..." aria-label="Search repos">
+    <span id="fchips" style="display:contents"></span>
+    <button type="button" class="tog" id="clr" hidden>Clear all</button>
+    <label class="tbsort" id="sortbox" hidden>Sort <select id="sort" aria-label="Sort repos within each group"><option value="name">Name</option><option value="size">Largest first</option></select></label>
+    <span class="shown" id="shown" aria-live="polite"></span>
+  </div>
+</div>
+<div class="wrap">
+  <div id="list"></div>
+  <p class="credit">RepoAtlas <span id="ver2"></span>, created by <b>datacraft.yogi</b></p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const DATA = [{"name":"broken-project-index","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\broken","path":"C:\\RepoAtlasDemo\\broken\\broken-project-index","status":"Broken","dup":false,"err":"fatal: not a git repository (or any of the parent directories): .git","st":null,"sz":{"total":786432,"own":0,"un":786432,"git":0,"ign":0,"parts":[],"listed":false,"partial":false}},{"name":"damaged-git-history","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\broken","path":"C:\\RepoAtlasDemo\\broken\\damaged-git-history","status":"Broken","dup":false,"err":"fatal: invalid object name 'HEAD'.","st":null,"sz":{"total":1572864,"own":0,"un":1572864,"git":0,"ign":0,"parts":[],"listed":false,"partial":false}},{"name":"image-optimizer","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\image-optimizer","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":101711872,"own":66112718,"un":0,"git":11188305,"ign":24410849,"parts":[{"n":"node_modules","b":15134726},{"n":"dist","b":5614495},{"n":"build","b":3661628}],"listed":true,"partial":false}},{"name":"workflow-runner","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\workflow-runner","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":134217728,"own":75833017,"un":0,"git":18119393,"ign":40265318,"parts":[{"n":"node_modules","b":24964497},{"n":"dist","b":9261023},{"n":"build","b":6039798}],"listed":true,"partial":false}},{"name":"markdown-converter","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\markdown-converter","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":166723584,"own":96699679,"un":0,"git":10003415,"ign":60020490,"parts":[{"n":"node_modules","b":37212703},{"n":"dist","b":13804712},{"n":"build","b":9003075}],"listed":true,"partial":false}},{"name":"pdf-toolkit","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\pdf-toolkit","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":199229440,"own":158387406,"un":0,"git":16934502,"ign":23907532,"parts":[{"n":"node_modules","b":14822669},{"n":"dist","b":5498732},{"n":"build","b":3586131}],"listed":true,"partial":false}},{"name":"csv-cleaner","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\csv-cleaner","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"","staged":1,"tracked":1,"unstaged":0,"detached":false},"sz":{"total":231735296,"own":164532061,"un":0,"git":25490882,"ign":41712353,"parts":[{"n":"node_modules","b":25861658},{"n":"dist","b":9593841},{"n":"build","b":6256854}],"listed":true,"partial":false}},{"name":"report-builder","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\report-builder","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"","staged":0,"tracked":2,"unstaged":2,"detached":false},"sz":{"total":65011712,"own":40632321,"un":0,"git":8776581,"ign":15602810,"parts":[{"n":"node_modules","b":9673742},{"n":"dist","b":3588646},{"n":"build","b":2340422}],"listed":true,"partial":false}},{"name":"notes-pwa","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\notes-pwa","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":1,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"","staged":0,"tracked":3,"unstaged":3,"detached":false},"sz":{"total":97517568,"own":62411244,"un":0,"git":5851054,"ign":29255270,"parts":[{"n":"node_modules","b":18138267},{"n":"dist","b":6728712},{"n":"build","b":4388291}],"listed":true,"partial":false}},{"name":"local-search","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\local-search","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"","staged":1,"tracked":1,"unstaged":0,"detached":false},"sz":{"total":130023424,"own":72163001,"un":0,"git":11051991,"ign":46808432,"parts":[{"n":"node_modules","b":29021227},{"n":"dist","b":10765939},{"n":"build","b":7021266}],"listed":true,"partial":false}},{"name":"prompt-playground","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\prompt-playground","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"","staged":0,"tracked":2,"unstaged":2,"detached":false},"sz":{"total":162529280,"own":125147547,"un":0,"git":17878220,"ign":19503513,"parts":[{"n":"node_modules","b":12092178},{"n":"dist","b":4485807},{"n":"build","b":2925528}],"listed":true,"partial":false}},{"name":"file-organizer","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\file-organizer","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"","staged":0,"tracked":3,"unstaged":3,"detached":false},"sz":{"total":195035136,"own":133599069,"un":0,"git":26329743,"ign":35106324,"parts":[{"n":"node_modules","b":21765920},{"n":"dist","b":8074454},{"n":"build","b":5265950}],"listed":true,"partial":false}},{"name":"backup-helper","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\backup-helper","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":227540992,"own":159278695,"un":0,"git":13652459,"ign":54609838,"parts":[{"n":"node_modules","b":33858099},{"n":"dist","b":12560262},{"n":"build","b":8191477}],"listed":true,"partial":false}},{"name":"task-scheduler","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\task-scheduler","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":60817408,"own":37402707,"un":0,"git":5169479,"ign":18245222,"parts":[{"n":"node_modules","b":11312037},{"n":"dist","b":4196401},{"n":"build","b":2736784}],"listed":true,"partial":false}},{"name":"config-generator","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\config-generator","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":93323264,"own":49461330,"un":0,"git":10265559,"ign":33596375,"parts":[{"n":"node_modules","b":20829752},{"n":"dist","b":7727166},{"n":"build","b":5039457}],"listed":true,"partial":false}},{"name":"api-prototype","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\api-prototype","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":125829120,"own":93742695,"un":0,"git":16986931,"ign":15099494,"parts":[{"n":"node_modules","b":9361686},{"n":"dist","b":3472883},{"n":"build","b":2264925}],"listed":true,"partial":false}},{"name":"browser-automation","remote":"","rname":"origin","url":"","folder":"C:\\RepoAtlasDemo\\local-only","path":"C:\\RepoAtlasDemo\\local-only\\browser-automation","status":"Local only","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"ok","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":1488977920,"own":1131623220,"un":0,"git":89338675,"ign":268016025,"parts":[{"n":"node_modules","b":166169935},{"n":"dist","b":61643685},{"n":"build","b":40202405}],"listed":true,"partial":false}},{"name":"api-starter","remote":"demo-org/api-starter","rname":"origin","url":"https://github.invalid/demo-org/api-starter","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\api-starter","status":"Mine on GitHub","dup":true,"err":"","st":{"behind":0,"ahead":1,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-27","staged":0,"tracked":3,"unstaged":3,"detached":false},"sz":{"total":444596224,"own":300102452,"un":0,"git":37790679,"ign":106703093,"parts":[{"n":"node_modules","b":66155917},{"n":"dist","b":24541711},{"n":"build","b":16005465}],"listed":true,"partial":false}},{"name":"api-starter-copy","remote":"demo-org/api-starter","rname":"origin","url":"https://github.invalid/demo-org/api-starter","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\api-starter-copy","status":"Mine on GitHub","dup":true,"err":"","st":{"behind":1,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-28","staged":1,"tracked":1,"unstaged":0,"detached":false},"sz":{"total":493879296,"own":291388786,"un":0,"git":54326722,"ign":148163788,"parts":[{"n":"node_modules","b":91861548},{"n":"dist","b":34077671},{"n":"build","b":22224569}],"listed":true,"partial":false}},{"name":"dashboard-ui","remote":"demo-org/dashboard-ui","rname":"origin","url":"https://github.invalid/demo-org/dashboard-ui","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\dashboard-ui","status":"Mine on GitHub","dup":true,"err":"","st":{"behind":1,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-29","staged":0,"tracked":2,"unstaged":2,"detached":false},"sz":{"total":92274688,"own":46598719,"un":0,"git":12457082,"ign":33218887,"parts":[{"n":"node_modules","b":20595709},{"n":"dist","b":7640344},{"n":"build","b":4982834}],"listed":true,"partial":false}},{"name":"dashboard-ui-copy","remote":"demo-org/dashboard-ui","rname":"origin","url":"https://github.invalid/demo-org/dashboard-ui","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\dashboard-ui-copy","status":"Mine on GitHub","dup":true,"err":"","st":{"behind":1,"ahead":0,"branch":"main","fetch":"ok","untracked":1,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-10","staged":0,"tracked":3,"unstaged":3,"detached":false},"sz":{"total":141557760,"own":116077364,"un":0,"git":8493465,"ign":16986931,"parts":[{"n":"node_modules","b":10531897},{"n":"dist","b":3906994},{"n":"build","b":2548040}],"listed":true,"partial":false}},{"name":"csv-analyzer","remote":"demo-org/csv-analyzer","rname":"origin","url":"https://github.invalid/demo-org/csv-analyzer","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\csv-analyzer","status":"Mine on GitHub","dup":true,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-11","staged":1,"tracked":1,"unstaged":0,"detached":false},"sz":{"total":190840832,"own":140268013,"un":0,"git":16221470,"ign":34351349,"parts":[{"n":"node_modules","b":21297836},{"n":"dist","b":7900810},{"n":"build","b":5152703}],"listed":true,"partial":false}},{"name":"csv-analyzer-copy","remote":"demo-org/csv-analyzer","rname":"origin","url":"https://github.invalid/demo-org/csv-analyzer","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\csv-analyzer-copy","status":"Mine on GitHub","dup":true,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-12","staged":0,"tracked":2,"unstaged":2,"detached":false},"sz":{"total":240123904,"own":156080539,"un":0,"git":26413629,"ign":57629736,"parts":[{"n":"node_modules","b":35730436},{"n":"dist","b":13254839},{"n":"build","b":8644461}],"listed":true,"partial":false}},{"name":"docs-portal","remote":"demo-org/docs-portal","rname":"origin","url":"https://github.invalid/demo-org/docs-portal","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\docs-portal","status":"Mine on GitHub","dup":true,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-13","staged":0,"tracked":3,"unstaged":3,"detached":false},"sz":{"total":289406976,"own":163514943,"un":0,"git":39069941,"ign":86822092,"parts":[{"n":"node_modules","b":53829697},{"n":"dist","b":19969081},{"n":"build","b":13023314}],"listed":true,"partial":false}},{"name":"docs-portal-copy","remote":"demo-org/docs-portal","rname":"origin","url":"https://github.invalid/demo-org/docs-portal","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\docs-portal-copy","status":"Mine on GitHub","dup":true,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":1,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-14","staged":1,"tracked":1,"unstaged":0,"detached":false},"sz":{"total":338690048,"own":196440229,"un":0,"git":20321402,"ign":121928417,"parts":[{"n":"node_modules","b":75595618},{"n":"dist","b":28043535},{"n":"build","b":18289264}],"listed":true,"partial":false}},{"name":"cli-toolkit","remote":"demo-org/cli-toolkit","rname":"origin","url":"https://github.invalid/demo-org/cli-toolkit","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\cli-toolkit","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-15","staged":0,"tracked":2,"unstaged":2,"detached":false},"sz":{"total":387973120,"own":308438631,"un":0,"git":32977715,"ign":46556774,"parts":[{"n":"node_modules","b":28865199},{"n":"dist","b":10708058},{"n":"build","b":6983517}],"listed":true,"partial":false}},{"name":"log-parser","remote":"demo-org/log-parser","rname":"origin","url":"https://github.invalid/demo-org/log-parser","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\log-parser","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-16","staged":0,"tracked":3,"unstaged":3,"detached":false},"sz":{"total":437256192,"own":310451897,"un":0,"git":48098181,"ign":78706114,"parts":[{"n":"node_modules","b":48797790},{"n":"dist","b":18102406},{"n":"build","b":11805918}],"listed":true,"partial":false}},{"name":"metrics-dashboard","remote":"demo-org/metrics-dashboard","rname":"origin","url":"https://github.invalid/demo-org/metrics-dashboard","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\metrics-dashboard","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-17","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":486539264,"own":304087041,"un":0,"git":65682800,"ign":116769423,"parts":[{"n":"node_modules","b":72397042},{"n":"dist","b":26856967},{"n":"build","b":17515414}],"listed":true,"partial":false}},{"name":"inventory-service","remote":"demo-org/inventory-service","rname":"origin","url":"https://github.invalid/demo-org/inventory-service","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\inventory-service","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-18","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":84934656,"own":54358181,"un":0,"git":5096079,"ign":25480396,"parts":[{"n":"node_modules","b":15797845},{"n":"dist","b":5860491},{"n":"build","b":3822060}],"listed":true,"partial":false}},{"name":"user-service","remote":"demo-org/user-service","rname":"origin","url":"https://github.invalid/demo-org/user-service","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\user-service","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-19","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":134217728,"own":74490840,"un":0,"git":11408506,"ign":48318382,"parts":[{"n":"node_modules","b":29957396},{"n":"dist","b":11113227},{"n":"build","b":7247759}],"listed":true,"partial":false}},{"name":"webhook-listener","remote":"demo-org/webhook-listener","rname":"origin","url":"https://github.invalid/demo-org/webhook-listener","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\webhook-listener","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-20","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":183500800,"own":141295616,"un":0,"git":20185088,"ign":22020096,"parts":[{"n":"node_modules","b":13652459},{"n":"dist","b":5064622},{"n":"build","b":3303015}],"listed":true,"partial":false}},{"name":"queue-worker","remote":"demo-org/queue-worker","rname":"origin","url":"https://github.invalid/demo-org/queue-worker","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\queue-worker","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-21","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":232783872,"own":159456954,"un":0,"git":31425822,"ign":41901096,"parts":[{"n":"node_modules","b":25978679},{"n":"dist","b":9637252},{"n":"build","b":6285165}],"listed":true,"partial":false}},{"name":"auth-example","remote":"demo-org/auth-example","rname":"origin","url":"https://github.invalid/demo-org/auth-example","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\auth-example","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-22","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":282066944,"own":197446862,"un":0,"git":16924016,"ign":67696066,"parts":[{"n":"node_modules","b":41971560},{"n":"dist","b":15570095},{"n":"build","b":10154411}],"listed":true,"partial":false}},{"name":"data-importer","remote":"demo-org/data-importer","rname":"origin","url":"https://github.invalid/demo-org/data-importer","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\data-importer","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-23","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":331350016,"own":203780261,"un":0,"git":28164751,"ign":99405004,"parts":[{"n":"node_modules","b":61631102},{"n":"dist","b":22863150},{"n":"build","b":14910752}],"listed":true,"partial":false}},{"name":"batch-processor","remote":"demo-org/batch-processor","rname":"origin","url":"https://github.invalid/demo-org/batch-processor","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\batch-processor","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-24","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":380633088,"own":201735538,"un":0,"git":41869639,"ign":137027911,"parts":[{"n":"node_modules","b":84957304},{"n":"dist","b":31516419},{"n":"build","b":20554188}],"listed":true,"partial":false}},{"name":"search-indexer","remote":"demo-org/search-indexer","rname":"origin","url":"https://github.invalid/demo-org/search-indexer","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\search-indexer","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-25","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":429916160,"own":320287540,"un":0,"git":58038681,"ign":51589939,"parts":[{"n":"node_modules","b":31985762},{"n":"dist","b":11865685},{"n":"build","b":7738492}],"listed":true,"partial":false}},{"name":"test-runner","remote":"demo-org/test-runner","rname":"origin","url":"https://github.invalid/demo-org/test-runner","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\test-runner","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-26","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":479199232,"own":364191418,"un":0,"git":28751953,"ign":86255861,"parts":[{"n":"node_modules","b":53478633},{"n":"dist","b":19838848},{"n":"build","b":12938380}],"listed":true,"partial":false}},{"name":"text-extractor","remote":"demo-org/text-extractor","rname":"origin","url":"https://github.invalid/demo-org/text-extractor","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\text-extractor","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-27","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":77594624,"own":52376372,"un":0,"git":6595543,"ign":18622709,"parts":[{"n":"node_modules","b":11546079},{"n":"dist","b":4283223},{"n":"build","b":2793407}],"listed":true,"partial":false}},{"name":"screenshot-tool","remote":"demo-org/screenshot-tool","rname":"origin","url":"https://github.invalid/demo-org/screenshot-tool","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\screenshot-tool","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"a1b2c3d","fetchedAt":"2026-09-28","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":126877696,"own":74857842,"un":0,"git":13956546,"ign":38063308,"parts":[{"n":"node_modules","b":23599250},{"n":"dist","b":8754560},{"n":"build","b":5709498}],"listed":true,"partial":false}},{"name":"git-health-demo","remote":"demo-org/git-health-demo","rname":"origin","url":"https://github.invalid/demo-org/git-health-demo","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\git-health-demo","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":0,"ahead":0,"branch":"main","fetch":"ok","untracked":0,"state":"ok","upGone":false,"up":"origin/main","initial":false,"conflicts":0,"sha":"e4f5a6b","fetchedAt":"2026-09-29","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":1237319680,"own":624846440,"un":0,"git":167038156,"ign":445435084,"parts":[{"n":"node_modules","b":276169752},{"n":"dist","b":102450069},{"n":"build","b":66815263}],"listed":true,"partial":false}},{"name":"python-helpers","remote":"demo-org/python-helpers","rname":"origin","url":"https://github.invalid/demo-org/python-helpers","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\python-helpers","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":225443840,"own":184863950,"un":0,"git":13526630,"ign":27053260,"parts":[{"n":"node_modules","b":16773021},{"n":"dist","b":6222249},{"n":"build","b":4057990}],"listed":true,"partial":false}},{"name":"node-starter","remote":"demo-org/node-starter","rname":"origin","url":"https://github.invalid/demo-org/node-starter","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\node-starter","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":274726912,"own":201924281,"un":0,"git":23351787,"ign":49450844,"parts":[{"n":"node_modules","b":30659523},{"n":"dist","b":11373694},{"n":"build","b":7417627}],"listed":true,"partial":false}},{"name":"electron-shell","remote":"demo-org/electron-shell","rname":"origin","url":"https://github.invalid/demo-org/electron-shell","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\electron-shell","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":324009984,"own":210606490,"un":0,"git":35641098,"ign":77762396,"parts":[{"n":"node_modules","b":48212685},{"n":"dist","b":17885351},{"n":"build","b":11664360}],"listed":true,"partial":false}},{"name":"desktop-widget","remote":"demo-org/desktop-widget","rname":"origin","url":"https://github.invalid/demo-org/desktop-widget","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\desktop-widget","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":373293056,"own":210910578,"un":0,"git":50394562,"ign":111987916,"parts":[{"n":"node_modules","b":69432507},{"n":"dist","b":25757220},{"n":"build","b":16798189}],"listed":true,"partial":false}},{"name":"markdown-site","remote":"demo-org/markdown-site","rname":"origin","url":"https://github.invalid/demo-org/markdown-site","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\markdown-site","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":422576128,"own":245094155,"un":0,"git":25354567,"ign":152127406,"parts":[{"n":"node_modules","b":94318991},{"n":"dist","b":34989303},{"n":"build","b":22819112}],"listed":true,"partial":false}},{"name":"static-blog","remote":"demo-org/static-blog","rname":"origin","url":"https://github.invalid/demo-org/static-blog","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\static-blog","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":471859200,"own":375128064,"un":0,"git":40108032,"ign":56623104,"parts":[{"n":"node_modules","b":35106324},{"n":"dist","b":13023313},{"n":"build","b":8493467}],"listed":true,"partial":false}},{"name":"task-api","remote":"demo-org/task-api","rname":"origin","url":"https://github.invalid/demo-org/task-api","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\task-api","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":70254592,"own":49880761,"un":0,"git":7728005,"ign":12645826,"parts":[{"n":"node_modules","b":7840412},{"n":"dist","b":2908539},{"n":"build","b":1896875}],"listed":true,"partial":false}},{"name":"notes-api","remote":"demo-org/notes-api","rname":"origin","url":"https://github.invalid/demo-org/notes-api","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\notes-api","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":119537664,"own":74711041,"un":0,"git":16137584,"ign":28689039,"parts":[{"n":"node_modules","b":17787204},{"n":"dist","b":6598478},{"n":"build","b":4303357}],"listed":true,"partial":false}},{"name":"cache-service","remote":"demo-org/cache-service","rname":"origin","url":"https://github.invalid/demo-org/cache-service","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\cache-service","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":168820736,"own":108045272,"un":0,"git":10129244,"ign":50646220,"parts":[{"n":"node_modules","b":31400656},{"n":"dist","b":11648630},{"n":"build","b":7596934}],"listed":true,"partial":false}},{"name":"json-validator","remote":"demo-org/json-validator","rname":"origin","url":"https://github.invalid/demo-org/json-validator","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\json-validator","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":218103808,"own":121047615,"un":0,"git":18538823,"ign":78517370,"parts":[{"n":"node_modules","b":48680769},{"n":"dist","b":18058995},{"n":"build","b":11777606}],"listed":true,"partial":false}},{"name":"csv-pipeline","remote":"demo-org/csv-pipeline","rname":"origin","url":"https://github.invalid/demo-org/csv-pipeline","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\csv-pipeline","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":267386880,"own":205887899,"un":0,"git":29412556,"ign":32086425,"parts":[{"n":"node_modules","b":19893583},{"n":"dist","b":7379877},{"n":"build","b":4812965}],"listed":true,"partial":false}},{"name":"api-mock-server","remote":"demo-org/api-mock-server","rname":"origin","url":"https://github.invalid/demo-org/api-mock-server","folder":"D:\\SampleWorkspace\\repositories","path":"D:\\SampleWorkspace\\repositories\\api-mock-server","status":"Mine on GitHub","dup":false,"err":"","st":{"behind":null,"ahead":null,"branch":"main","fetch":"","untracked":0,"state":"unsafe","upGone":false,"up":"","initial":false,"conflicts":0,"sha":"","fetchedAt":"","staged":0,"tracked":0,"unstaged":0,"detached":false},"sz":{"total":316669952,"own":216918918,"un":0,"git":42750443,"ign":57000591,"parts":[{"n":"node_modules","b":35340366},{"n":"dist","b":13110135},{"n":"build","b":8550090}],"listed":true,"partial":false}}];
+const GENERATED = "2026-10-01 09:30";
+const META = {"sep":"\\","open":"start","me":"demo-user","roots":["C:\\RepoAtlasDemo","D:\\SampleWorkspace"],"rootsCount":2,"redacted":true,"work":{"fetch":false,"noUntracked":false},"size":true,"version":"1.0","demo":true};
+const SEP = META.sep || "/";
+const ME = META.me || "";
+// Private-details view: every record may carry "m", a copy with placeholders for names, folders and accounts.
+// A shareable copy (META.redacted) holds only placeholders, so there is nothing to reveal.
+let HIDE = !!META.redacted;
+const V = r => (HIDE && r.m) ? r.m : r;
+const GROUPS = [
+  { key:'Broken',            label:'Broken',                 color:'var(--broken)', icon:'xcircle', hint:'.git folder exists but git cannot read it' },
+  { key:'Local only',        label:'Only on this computer',  color:'var(--local)',  icon:'drive',   hint:'never put on GitHub, so nothing is backed up' },
+  { key:'Mine on GitHub',    label:'My GitHub repos',        color:'var(--mine)',   icon:'cloudok', hint:'' },
+  { key:'Third-party clone', label:'Someone else\'s repo',   color:'var(--third)',  icon:'people',  hint:'copied from another person on GitHub' },
+  { key:'Other remote',      label:'On another site',        color:'var(--other)',  icon:'server',  hint:'GitLab, Bitbucket or another site, not github.com' },
+  { key:'Error',             label:'Error',                  color:'var(--error)',  icon:'warn',    hint:'unexpected git error' }
+];
+const GL = k => { const g = GROUPS.find(x => x.key === k); return g ? g.label : k; };
+let active = 'All', query = '', dupOnly = {}, cheatOpen = {};
+
+// Icons for the top section (24-unit outline set). ico(name, size) returns ready SVG markup.
+const IC = {
+  folder:  '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  clock:   '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  help:    '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  info:    '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+  cloud:   '<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>',
+  cloudok: '<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="8.5 14.5 11 17 15.5 12"/>',
+  up:      '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>',
+  down:    '<polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>',
+  edit:    '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>',
+  check:   '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  commit:  '<circle cx="12" cy="12" r="4"/><line x1="1.05" y1="12" x2="7" y2="12"/><line x1="17.01" y1="12" x2="22.96" y2="12"/>',
+  flag:    '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+  warn:    '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  xcircle: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+  drive:   '<line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/>',
+  people:  '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  server:  '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
+  copy:    '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  lock:    '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  arrow:   '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+  shield:  '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
+};
+function ico(name, size) {
+  const n = size || 16;
+  return '<svg width="' + n + '" height="' + n + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (IC[name] || '') + '</svg>';
+}
+function icoEl(name, size, color) {
+  const e = el('span', 'ico'); e.innerHTML = ico(name, size);
+  if (color) e.style.setProperty('--ic', color);
+  return e;
+}
+document.querySelectorAll('[data-ico]').forEach(e => { e.innerHTML = ico(e.dataset.ico, +e.dataset.s || 16); });
+const WORK = META.work || {};
+const HAS_WORK = DATA.some(r => r.st);
+const HAS_SIZE = !!META.size && DATA.some(r => r.sz);
+let sortBy = 'name';
+DATA.forEach((r, i) => { r._i = i; });
+let wf = { unc:false, push:false, pull:false, clean:false, unk:false, dup:false };     // work-state filters; they combine with the colour filter
+
+// Work state (counts are not private, so these read the real record even while details are hidden)
+const ws      = r => (r.st && r.st.state === 'ok') ? r.st : null;
+const nUnc    = r => { const s = ws(r); return s ? s.tracked + s.untracked : 0; };
+const nAhead  = r => { const s = ws(r); return s && s.ahead  > 0 ? s.ahead  : 0; };
+const nBehind = r => { const s = ws(r); return s && s.behind > 0 ? s.behind : 0; };
+function isClean(r) {
+  const s = ws(r);
+  if (!s) return false;
+  if (nUnc(r) || s.conflicts || nAhead(r) || nBehind(r)) return false;
+  if (r.status !== 'Local only' && !s.initial && s.ahead === null) return false;    // could not tell what is unpushed
+  return true;
+}
+const anyFilter = () => active !== 'All' || wf.unc || wf.push || wf.pull || wf.clean || wf.unk || wf.dup || !!query;
+
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.id); toast.id = setTimeout(() => t.classList.remove('show'), 1400);
+}
+function copy(text, label, cb) {
+  const done = () => { if (cb) cb(); else toast('Copied ' + label); };
+  if (navigator.clipboard && window.isSecureContext !== false) {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else fallback();
+  function fallback() {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Copy failed'); }
+    ta.remove();
+  }
+}
+
+const SVG = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">';
+const ICON_TERM  = SVG + '<path d="M2 4l4 4-4 4M8 13h6"/></svg>';
+const ICON_CLIP  = SVG + '<rect x="4" y="3" width="9" height="11" rx="1.5"/><path d="M6.5 3V2h4v1"/></svg>';
+const ICON_CHECK = SVG + '<path d="M3 8.5l3 3 7-7"/></svg>';
+const EYE = '<path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8s-2.4 4.5-6.5 4.5S1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/>';
+const ICON_EYE     = SVG + EYE + '</svg>';
+const ICON_EYE_OFF = SVG + EYE + '<path d="M2.5 2.5l11 11"/></svg>';
+
+// Button that copies text and flips to "Copied" for a moment
+function mkBtn(label, tip, text, cls, icon) {
+  const b = el('button', 'btn' + (cls ? ' ' + cls : ''));
+  b.type = 'button';
+  b.title = HIDE ? tip : tip + ': ' + text;      // no hover text with real values while hidden
+  const paint = (ic, txt) => { b.innerHTML = ic; b.appendChild(el('span', '', txt)); };
+  paint(icon, label);
+  b.onclick = () => copy(text, label, () => {
+    b.classList.add('done'); paint(ICON_CHECK, 'Copied');
+    setTimeout(() => { b.classList.remove('done'); paint(icon, label); }, 1400);
+  });
+  return b;
+}
+
+// Cheatsheet: commands are generated per repo, based on its status and details
+// Quote a path for PowerShell. Single quotes are safest: "$" or a backtick inside double quotes would be expanded.
+function qp(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
+// For "cd": plain double quotes work in PowerShell, cmd and bash, unless the path contains $ ` or '
+function cdq(s) { return /[$`']/.test(s) ? qp(s) : '"' + s + '"'; }
+function slug(s) { return s.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, ''); }
+
+// view=true builds the commands from the placeholder values (what is shown while details are hidden);
+// view=false builds the real ones (what the Copy buttons copy). Which items appear depends only on the real record.
+function cheatFor(r, view) {
+  const g = x => view ? V(x) : x;
+  const v = g(r);
+  const p = v.path, n = slug(v.name), url = v.url || '<github-url>';
+  const who = (view && HIDE) ? 'you' : ME;
+  const me = who || '<your-github-user>';
+  const ghList = 'gh repo list ' + (who ? who + ' ' : '') + '--limit 200';
+  const opener = META.open || 'open';
+  const items = [];
+  const add = (t, d, c) => items.push({ t: t, d: d, c: c });
+
+  // Public demo mode never presents executable Git/GitHub operations.
+  if (META.demo) {
+    add('Demo-safe example', 'This public report uses synthetic data. Copying this command prints a notice and does not read or modify a repository.', 'Write-Output "RepoAtlas demo only: no Git operation performed."');
+    add('Sample repository path', 'This path is fictional and is not scanned by this HTML report.', 'Write-Output ' + qp(p));
+    add('Example status command', 'Illustration only. A live local report can generate commands for your real repositories.', 'Write-Output "Example only: git status --short"');
+    return items;
+  }
+
+  // what to do about uncommitted / unpushed / unpulled work (which items appear depends on the real state only)
+  const s = ws(r), sv = v.st;
+  if (r.st && r.st.state === 'unsafe') add('Mark this folder as safe', 'Git did not read this repo\'s state because another user owns the folder. Only do this if you trust it; then run the scan again.', 'git config --global --add safe.directory ' + qp(p.replace(/\\/g, '/')));
+  if (s && sv) {
+    const P = qp(p), rn = v.rname || 'origin', noUp = !s.up || s.upGone;
+    const unc = nUnc(r), ah = nAhead(r), bh = nBehind(r);
+    if (s.conflicts) add('Finish the merge', s.conflicts + ' file' + (s.conflicts === 1 ? ' is' : 's are') + ' in conflict. Open them, fix the marked sections, then commit (or continue the rebase).', 'git -C ' + P + ' status');
+    if (unc) {
+      add('See what changed', unc + ' item' + (unc === 1 ? '' : 's') + ' with work pending to commit. New folders count once.', 'git -C ' + P + ' status -s');
+      if (!s.initial) add('Review the edits', 'Lines changed in files git already tracks (new files are not included).', 'git -C ' + P + ' diff HEAD --stat');
+      add('Commit it', 'Saves everything as one commit. Change the message first.', 'cd ' + P + '; git add -A; git commit -m "describe the change"');
+      add('Or set it aside', 'Stash keeps the work safe without a commit, new files included. Bring it back with: git stash pop', 'git -C ' + P + ' stash push -u -m "wip"');
+    }
+    if (ah) {
+      add('See commits pending to push', noUp ? 'Commits that exist on no remote branch yet.' : 'Commits on this branch that ' + rn + ' does not have.',
+          'git -C ' + P + ' log --oneline ' + (noUp ? 'HEAD --not --remotes' : "'@{u}..'"));
+      if (s.detached)  add('Keep these commits', 'HEAD is not on a branch, so these commits are easy to lose. This puts them on a new branch.', 'git -C ' + P + ' switch -c my-work');
+      else if (noUp)   add('Push this branch', 'Uploads it and links it to ' + rn + ', so pushing and pulling work from now on.', 'git -C ' + P + ' push -u ' + rn + ' ' + qp(sv.branch));
+      else             add('Push', 'Uploads the commits pending to push to ' + (sv.up || rn) + '.', 'git -C ' + P + ' push');
+    }
+    if (bh) add('See what you have not pulled', 'Commits on ' + (sv.up || 'the remote') + ' that you do not have yet. Counted as of the last fetch.', 'git -C ' + P + " log --oneline 'HEAD..@{u}'");
+  }
+
+  // "pull" has nothing to merge when the branch follows no remote branch (or HEAD is detached): offer fetch instead
+  const noTrack = !!(s && (!s.up || s.upGone));
+  const pullIt = (title, desc, flag) => noTrack
+    ? add('Fetch the latest', 'This branch follows no remote branch, so pull has nothing to merge. Fetch downloads without touching your files.', 'git -C ' + qp(p) + ' fetch')
+    : add(title, desc, 'git -C ' + qp(p) + ' pull' + flag);
+
+  if (r.status === 'Broken') {
+    add('See what git complains about', 'Shows the exact error for this folder.', 'git -C ' + qp(p) + ' status');
+    add('Inspect the .git folder', 'If it is empty or tiny, the history is lost or damaged.', 'Get-ChildItem -Force ' + qp(p + SEP + '.git'));
+    add('Look for the repo on GitHub', 'Searches your GitHub repos for a name like this one.', ghList + ' | Select-String "' + n + '"');
+    add('Rebuild and reconnect', 'Only if the files are fine and the repo exists on GitHub. Back up the folder first and fill in the URL.', 'cd ' + qp(p) + '; git init; git remote add origin ' + url + '; git fetch; git reset origin/main');
+  }
+  else if (r.status === 'Local only') {
+    if (!s) add('Check for work pending to commit', 'Decide whether this folder is worth keeping.', 'git -C ' + qp(p) + ' status -sb');
+    add('Does GitHub already have it?', 'Searches your GitHub repos for this name before you create a new one.', ghList + ' | Select-String "' + n + '"');
+    add('Publish with GitHub CLI', 'Creates the GitHub repo, sets origin and pushes in one go.', 'cd ' + qp(p) + '; gh repo create ' + n + ' --private --source . --push');
+    add('Publish manually', 'After creating an empty repo named ' + n + ' on github.com.', 'cd ' + qp(p) + '; git remote add origin https://github.com/' + me + '/' + n + '.git; git branch -M main; git push -u origin main');
+  }
+  else if (r.status === 'Mine on GitHub') {
+    if (!s) add('Anything pending to commit or push?', 'Shows modified files and how far ahead or behind you are.', 'git -C ' + qp(p) + ' status -sb');
+    pullIt('Bring it up to date', 'Pulls the latest from ' + v.remote + '.', ' --rebase');
+    add('Open on GitHub', 'Opens ' + v.remote + ' in your browser.', opener + ' ' + url);
+    const key = (r.remote || '').toLowerCase();
+    const sibs = DATA.filter(x => x.remote && x.remote.toLowerCase() === key && x.path !== r.path);
+    if (sibs.length) {
+      const all = [r].concat(sibs).map(g);
+      const list = all.map(x => qp(x.path)).join(', ');
+      const where = all.slice(1).map(s => (s.folder && s.folder !== '.' ? s.folder + SEP : '') + s.name).join('  |  ');
+      add('Which duplicate is newest?', 'Same repo is also at: ' + where + '. Prints the last commit date of each copy.',
+          'foreach ($d in ' + list + ') { "$d  " + (git -C $d log -1 --date=short --format=%cd) }');
+      add('Work pending to commit in each copy?', 'Check this before deleting any copy.',
+          'foreach ($d in ' + list + ') { "== $d"; git -C $d status -sb }');
+    }
+  }
+  else if (r.status === 'Third-party clone') {
+    pullIt('Update the clone', 'Pulls upstream changes from ' + v.remote + '.', '');
+    if (!s) add('Any local edits?', 'Check before updating or deleting.', 'git -C ' + qp(p) + ' status -sb');
+    add('Fork it to your account', 'Needed before you can push your own changes.', 'cd ' + qp(p) + '; gh repo fork --remote');
+    if (r.url) add('Open on GitHub', 'Opens ' + v.remote + ' in your browser.', opener + ' ' + v.url);
+  }
+  else if (r.status === 'Other remote') {
+    pullIt('Update the clone', 'Pulls the latest from the remote.', '');
+    if (!s) add('Any local edits?', 'Check before updating or deleting.', 'git -C ' + qp(p) + ' status -sb');
+    add('Show the remote', 'This remote is not on github.com, so the GitHub CLI does not apply here.', 'git -C ' + qp(p) + ' remote -v');
+    if (r.url) add('Open in browser', 'Opens the remote in your browser.', opener + ' ' + v.url);
+  }
+  else {
+    if (/dubious/i.test(r.err || '')) {
+      add('Fix "dubious ownership"', 'Marks only this folder as safe for your user.', 'git config --global --add safe.directory ' + qp(p.replace(/\\/g, '/')));
+    }
+    add('Retry and show the raw error', 'Reads the remote again without hiding errors.', 'git -C ' + qp(p) + ' remote -v');
+  }
+  return items;
+}
+
+function renderCheat(r) {
+  const box = el('div', 'cheat');
+  const v = V(r);
+  const sb = sizeBox(r); if (sb) box.appendChild(sb);
+  if (v.err) {
+    box.appendChild(el('div', 'ch', 'Git reported:'));
+    box.appendChild(el('pre', 'err', v.err));
+  } else {
+    box.appendChild(el('div', 'ch', META.demo ? 'Safe demo examples. Copying these only prints sample text; it does not run Git or GitHub operations.' : 'Commands filled in for this repo (PowerShell syntax). Click Copy, then paste into a terminal.'));
+  }
+  const shown = cheatFor(r, true), real = cheatFor(r, false);    // same items; Copy always copies the real command
+  shown.forEach((i, ix) => {
+    const item = el('div', 'ci');
+    item.appendChild(el('div', 'ct', i.t));
+    item.appendChild(el('div', 'cd', i.d));
+    const line = el('div', 'cc');
+    line.appendChild(el('code', '', i.c));
+    line.appendChild(mkBtn('Copy', 'Copy command', real[ix].c, '', ICON_CLIP));
+    item.appendChild(line);
+    box.appendChild(item);
+  });
+  return box;
+}
+
+function matches(r) {
+  if (active !== 'All' && r.status !== active) return false;
+  if (wf.unc   && !nUnc(r))    return false;
+  if (wf.push  && !nAhead(r))  return false;
+  if (wf.pull  && !nBehind(r)) return false;
+  if (wf.clean && !isClean(r)) return false;
+  if (wf.unk   && !(r.st && r.st.state !== 'ok')) return false;
+  if (wf.dup   && !r.dup) return false;
+  if (!query) return true;
+  const v = V(r);
+  return (v.name + ' ' + v.remote + ' ' + v.folder + ' ' + ((v.st && v.st.branch) || '')).toLowerCase().includes(query);
+}
+
+// Active filters as removable chips in the sticky toolbar (the bar and tiles at the top are where filters are chosen)
+function renderFilters() {
+  const box = $('fchips'); box.textContent = '';
+  const mk = (label, off) => {
+    const b = el('button', 'fc', label); b.type = 'button';
+    b.title = 'Remove this filter';
+    b.appendChild(el('u', '', '\u00d7'));
+    b.onclick = off;
+    box.appendChild(b);
+  };
+  if (active !== 'All') mk(GL(active), () => { active = 'All'; render(); });
+  FILTER_NAMES.forEach(f => { if (wf[f.key]) mk(f.label, () => { wf[f.key] = false; render(); }); });
+  if (!anyFilter() && !query) box.appendChild(el('span', 'fhint', DATA.length ? 'Filters: none. Click a colour or tile at the top.' : ''));
+}
+const FILTER_NAMES = [
+  { key:'unc', label:'Pending to commit' }, { key:'push', label:'Pending to push' }, { key:'pull', label:'Unpulled' },
+  { key:'clean', label:'All good' }, { key:'unk', label:'Couldn\'t check' }, { key:'dup', label:'Duplicate copies' }
+];
+
+function fmtDay(s) {
+  const d = new Date(String(s) + 'T00:00:00');
+  return isNaN(d) ? s : d.toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' });
+}
+// The small line under the remote: branch, then only what needs attention. Hover text never contains real names while hidden.
+function renderState(r) {
+  const s0 = r.st;
+  if (!s0) return null;
+  const box = el('div', 'wstate');
+  const chip = (cls, text, tip, num) => {
+    const c = el('span', 'wc' + (cls ? ' ' + cls : ''));
+    if (num !== undefined) c.appendChild(el('b', '', num));
+    c.appendChild(document.createTextNode(text));
+    if (tip) c.title = tip;
+    box.appendChild(c);
+  };
+  if (s0.state === 'unsafe') { chip('', 'owned by another user', 'Git refuses to run in folders owned by another user, so its state was not read. The Commands panel shows how to mark it safe.'); return box; }
+  if (s0.state !== 'ok') {
+    chip('', 'couldn\'t check', s0.state === 'timeout' ? 'Git did not answer in time (a very large repo, a slow or offline drive, or a busy disk).' : 'Git could not read this repo\'s state.');
+    return box;
+  }
+  const s = r.st, v = V(r).st || s;
+  if (s.detached) chip('br', 'not on a branch' + (s.sha ? ' @ ' + s.sha : ''), 'HEAD is not on a branch (git calls this detached). Commits made here are easy to lose.');
+  else chip('br', v.branch + (s.initial ? ' (no commits yet)' : ''), s.initial ? 'Nothing has been committed in this repo yet.' : 'Current branch');
+  if (s.conflicts) chip('bad', 'clashing edits', 'Files where two sets of edits clash and must be fixed by hand (git calls this a merge conflict).', s.conflicts + ' ');
+  const unc = nUnc(r);
+  if (unc) {
+    const parts = [];
+    if (s.staged)    parts.push(s.staged + ' staged');
+    if (s.unstaged)  parts.push(s.unstaged + ' changed but not staged');
+    if (s.untracked) parts.push(s.untracked + ' new, not added to git (a new folder counts once)');
+    if (s.conflicts) parts.push(s.conflicts + ' in conflict');
+    chip('hot', 'pending to commit', 'Not saved in a commit yet (git calls this uncommitted): ' + parts.join(', ') + '.', unc + ' ');
+  }
+  const noUp = !s.up || s.upGone;
+  const ah = nAhead(r), bh = nBehind(r);
+  if (ah) chip('hot', 'pending to push \u2191', 'Saved in a commit but not on the remote yet (git calls this unpushed). ' + (s.detached ? 'HEAD is not on a branch. These commits are on no remote branch.'
+                         : s.upGone ? 'The remote branch was deleted. These commits are on no remote branch.'
+                         : !s.up ? 'This branch has no upstream. These commits are on no remote branch.'
+                         : 'Commits ahead of ' + v.up + '.'), ah + ' ');
+  if (bh) {
+    const when = s.fetch === 'ok' ? 'just fetched' : (s.fetchedAt ? 'the last fetch, ' + fmtDay(s.fetchedAt) : 'the last fetch (date unknown)');
+    chip('hot', 'unpulled \u2193', 'Commits on ' + v.up + ' that you do not have yet, as of ' + when + '.', bh + ' ');
+  }
+  if (s.upGone) chip('', 'remote branch deleted', 'The remote branch this one followed no longer exists (git calls this upstream gone).');
+  else if (!s.up && r.status !== 'Local only' && !s.detached && !s.initial) chip('', 'not linked to remote', 'This branch does not follow a remote branch (git calls this no upstream), so pushing and pulling need a branch name.');
+  if (r.status !== 'Local only' && !s.initial && s.ahead === null) chip('', 'pending to push: unknown', 'Could not count commits that are missing from the remote.');
+  if (s.fetch === 'failed' || s.fetch === 'timeout') chip('', s.fetch === 'timeout' ? 'remote timed out' : 'couldn\'t reach remote', 'The remote could not be reached (offline, or a password is needed), so the unpulled count may be out of date.');
+  if (isClean(r)) chip('', '\u2713 all good', r.status === 'Local only' ? 'Nothing pending to commit. This repo has no remote, so it is not backed up anywhere.' : 'Nothing pending to commit or push, and nothing unpulled (as of the last fetch).');
+  return box;
+}
+
+// sizes: binary units, as Explorer and Finder show them
+function fmtSize(n) {
+  n = +n || 0;
+  if (n < 1024) return n + ' B';
+  const u = ['KB', 'MB', 'GB', 'TB']; let i = -1;
+  do { n /= 1024; i++; } while (n >= 1000 && i < u.length - 1);    // 1003 KB reads better as 1.0 MB
+  return (n >= 100 || i === 0 ? Math.round(n) : n.toFixed(1)) + ' ' + u[i];
+}
+const sizeLabel = z => (z.partial ? 'at least ' : '') + fmtSize(z.total);
+function sizeBreakdown(z) {
+  if (z.un > 0) return 'Files ' + fmtSize(z.un) + ' (git would not open this folder, so they are not split), git history ' + fmtSize(z.git);
+  return 'Your files ' + fmtSize(z.own) + ', git history ' + fmtSize(z.git) + ', ignored by git ' + fmtSize(z.ign);
+}
+function sizeCell(r) {
+  const z = r.sz; if (!z) return el('div', 'sz');
+  const c = el('div', 'sz');
+  c.appendChild(el('b', '', (z.partial ? '\u2265 ' : '') + fmtSize(z.total)));
+  const bar = el('div', 'sbar');
+  [['s-own', z.own], ['s-un', z.un], ['s-git', z.git], ['s-ign', z.ign]].forEach(x => {
+    if (!(x[1] > 0) || !(z.total > 0)) return;
+    const i = el('i', x[0]); i.style.width = (100 * x[1] / z.total) + '%'; bar.appendChild(i);
+  });
+  c.appendChild(bar);
+  c.title = (z.partial ? 'At least ' : '') + fmtSize(z.total) + ' on disk. ' + sizeBreakdown(z) + (z.partial ? '. Some folders were too big or unreadable, so this is a minimum.' : '.');
+  return c;
+}
+// the same numbers as a small legend, shown at the top of the Commands panel (works on touch screens too)
+function sizeBox(r) {
+  const z = r.sz; if (!z) return null;
+  const box = el('div', 'szbox');
+  box.appendChild(el('div', 'ch', 'Space on disk: ' + sizeLabel(z) + (z.partial ? ' (some folders were too big or unreadable)' : '')));
+  const l = el('div', 'szl');
+  const row = (cls, name, val) => { const i = el('i', cls); l.appendChild(i); l.appendChild(el('span', '', name)); l.appendChild(el('span', '', val)); };
+  if (z.un > 0) row('s-un', 'Files (not split: git would not open this folder)', fmtSize(z.un));
+  else          row('s-own', 'Your files', fmtSize(z.own));
+  row('s-git', 'Git history (.git folder)', fmtSize(z.git));
+  if (!(z.un > 0)) {
+    const parts = (z.parts || []).filter(p => p.b > 0).map(p => p.n + ' ' + fmtSize(p.b)).join(', ');
+    row('s-ign', 'Ignored by git' + (parts ? ' (' + parts + ')' : ''), fmtSize(z.ign));
+  }
+  box.appendChild(l);
+  if (!(z.un > 0)) box.appendChild(el('p', '', 'Ignored files are things git is told to skip: usually downloads and build output that can be recreated (node_modules, build folders), but sometimes private files such as .env or a local database. Check before deleting.'));
+  return box;
+}
+
+function renderRow(r, color) {
+  const row = el('div', 'row' + (HAS_SIZE ? ' hs' : ''));
+  row.style.borderLeft = '4px solid ' + color;
+  const v = V(r);
+
+  const left = el('div');
+  const name = el('span', 'name', v.name);
+  left.appendChild(name);
+  if (r.dup) { const b = el('span', 'badge', 'duplicate'); b.title = 'Another local repo has the same remote'; left.appendChild(b); }
+  left.appendChild(el('div', 'folder', v.folder));
+
+  const mid = el('div', 'meta');
+  if (v.url && !HIDE) { const a = el('a', '', v.remote); a.href = v.url; a.target = '_blank'; a.rel = 'noopener'; mid.appendChild(a); }
+  else mid.appendChild(el('span', HIDE && v.remote ? '' : 'folder', v.remote || '-'));
+  if (v.rname && v.rname !== 'origin') mid.appendChild(el('span', 'folder', ' (remote: ' + v.rname + ')'));
+  const wst = renderState(r);
+  if (wst) mid.appendChild(wst);
+
+  const btns = el('div', 'btns');
+  btns.appendChild(mkBtn('Copy cd', 'Copy this cd command', 'cd ' + cdq(r.path), 'primary', ICON_TERM));
+  btns.appendChild(mkBtn('Copy path', 'Copy the folder path', r.path, '', ICON_CLIP));
+  const open = !!cheatOpen[r.path];
+  const fx = el('button', 'btn' + (open ? ' on' : ''), open ? 'Hide commands' : 'Commands');
+  fx.type = 'button';
+  fx.title = 'Ready-to-paste commands for this repo';
+  fx.onclick = () => { cheatOpen[r.path] = !open; renderList(); };
+  btns.appendChild(fx);
+
+  row.appendChild(left); row.appendChild(mid); if (HAS_SIZE) row.appendChild(sizeCell(r)); row.appendChild(btns);
+  const wrap = el('div', 'rw');
+  wrap.appendChild(row);
+  if (open) wrap.appendChild(renderCheat(r));
+  return wrap;
+}
+
+function renderList() {
+  const list = $('list'); list.textContent = '';
+  let shown = 0;
+  GROUPS.forEach(g => {
+    const all = DATA.filter(r => r.status === g.key && matches(r));
+    const dupCount = all.filter(r => r.dup).length;
+    if (!dupCount) dupOnly[g.key] = false;
+    let items = dupOnly[g.key] ? all.filter(r => r.dup) : all;
+    if (sortBy === 'size') items = items.slice().sort((a, b) => ((b.sz ? b.sz.total : -1) - (a.sz ? a.sz.total : -1)) || (a._i - b._i));
+    if (!items.length) return;
+    shown += items.length;
+    const sec = el('section');
+    const h = el('div', 'gh');
+    const pill = el('span', 'pill'); pill.style.background = g.color;
+    pill.appendChild(el('span', '', g.label)); pill.appendChild(el('span', 'n', items.length));
+    h.appendChild(pill);
+    if (g.hint) h.appendChild(el('small', '', '- ' + g.hint));
+    const tgs = el('div', 'tgs');
+    if (dupCount) {
+      const t = el('button', 'tog' + (dupOnly[g.key] ? ' on' : ''), 'Duplicates only (' + dupCount + ')');
+      t.onclick = () => { dupOnly[g.key] = !dupOnly[g.key]; renderList(); };
+      tgs.appendChild(t);
+    }
+    h.appendChild(tgs);
+    sec.appendChild(h);
+    // duplicate sets first, grouped by shared remote
+    const sets = {};
+    items.filter(r => r.dup).forEach(r => { const k = r.remote.toLowerCase(); (sets[k] = sets[k] || []).push(r); });
+    const dispKey = k => (HIDE ? V(sets[k][0]).remote : k).toLowerCase();
+    Object.keys(sets).sort((a, b) => dispKey(a) < dispKey(b) ? -1 : dispKey(a) > dispKey(b) ? 1 : 0).forEach(k => {
+      const box = el('div', 'dupset');
+      box.appendChild(el('div', 'dl', 'Same remote: ' + V(sets[k][0]).remote + ' - ' + sets[k].length + ' local copies'));
+      sets[k].forEach(r => box.appendChild(renderRow(r, g.color)));
+      sec.appendChild(box);
+    });
+    items.filter(r => !r.dup).forEach(r => sec.appendChild(renderRow(r, g.color)));
+    list.appendChild(sec);
+  });
+  if (!shown && DATA.length) list.appendChild(el('div', 'empty', anyFilter() ? 'No repos match these filters.' : 'No repos match.'));
+  $('shown').textContent = shown === DATA.length ? '' : 'Showing ' + shown + ' of ' + DATA.length;
+  $('clr').hidden = !anyFilter();
+}
+
+// ---- top section ----
+function fmtWhen(s) {
+  const d = new Date(String(s).replace(' ', 'T'));
+  if (isNaN(d)) return s;
+  return d.toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' }) + ', ' +
+         d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+}
+function listJoin(a) { return a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+function toggleStatus(key) { active = (active === key) ? 'All' : key; render(); }
+
+function paintScan() {
+  const roots = [].concat(META.roots || []), n = META.rootsCount || roots.length;
+  const t = HIDE ? (n ? n + (n === 1 ? ' folder' : ' folders') : '')
+                 : (roots.length ? listJoin(roots) : '');
+  $('scan1').textContent = t;
+  $('mi1').hidden = !t;
+}
+function paintSize() {
+  const have = DATA.filter(r => r.sz);
+  const box = $('disk');
+  box.hidden = !HAS_SIZE || !have.length;
+  if (box.hidden) return;
+  const sum = k => have.reduce((a, r) => a + (+r.sz[k] || 0), 0);
+  const total = sum('total'), some = have.some(r => r.sz.partial);
+  $('dtot').textContent = (some ? '\u2265 ' : '') + fmtSize(total);
+  $('dsub').textContent = 'used by ' + have.length + (have.length === 1 ? ' repo' : ' repos');
+  $('diskn').textContent = some ? 'Some repos were too big or unreadable, so this is a minimum.' : 'Space the repos use on this computer.';
+  const parts = [
+    { c:'d-own', n:'Your files',     v:sum('own'), d:'The code and files in the repos' },
+    { c:'d-git', n:'Git history',    v:sum('git'), d:'Hidden .git folders. Grows when large files are committed' },
+    { c:'d-ign', n:'Ignored by git', v:sum('ign'), d:'node_modules, builds, .env. Often rebuildable, but check first' },
+    { c:'d-un',  n:'Not split',      v:sum('un'),  d:'Repos git would not open, so their files could not be told apart' }
+  ].filter(x => x.v > 0);
+  const bar = $('dbar'), leg = $('dleg'); bar.textContent = ''; leg.textContent = '';
+  bar.setAttribute('aria-label', parts.map(x => x.n + ' ' + fmtSize(x.v)).join(', '));
+  parts.forEach(x => {
+    const pct = total > 0 ? 100 * x.v / total : 0;
+    const seg = el('i', x.c); seg.style.width = pct + '%'; seg.title = x.n + ': ' + fmtSize(x.v) + ' (' + Math.round(pct) + '%)'; bar.appendChild(seg);
+    const it = el('div'); const dn = el('div', 'dn');
+    dn.appendChild(el('i', x.c)); dn.appendChild(el('b', '', fmtSize(x.v))); dn.appendChild(el('span', '', x.n + ' \u00b7 ' + (pct > 0 && pct < 1 ? '<1' : Math.round(pct)) + '%'));
+    it.appendChild(dn); it.appendChild(el('p', '', x.d)); leg.appendChild(it);
+  });
+  // by category: how much space each kind of repo takes; one click filters the list to it
+  const cat = $('dcat'); cat.textContent = '';
+  const rows = GROUPS.map(g => {
+    const rs = have.filter(r => r.status === g.key);
+    const f = k => rs.reduce((a, r) => a + (+r.sz[k] || 0), 0);
+    return { g: g, n: rs.length, total: f('total'), own: f('own'), un: f('un'), git: f('git'), ign: f('ign'), part: rs.some(r => r.sz.partial) };
+  }).filter(x => x.n).sort((a, b) => b.total - a.total);
+  if (rows.length) {
+    const h = el('h3', '', 'By category'); h.appendChild(el('span', '', 'Click one to list just those repos')); cat.appendChild(h);
+    const mx = Math.max.apply(null, rows.map(x => x.total)) || 1;
+    rows.forEach(x => {
+      const b = el('button', 'dcr'); b.type = 'button'; b.dataset.key = x.g.key;
+      const pct = total > 0 ? 100 * x.total / total : 0;
+      const cn = el('span', 'cn'); const dot = el('i'); dot.style.background = x.g.color;
+      cn.appendChild(dot); cn.appendChild(document.createTextNode(x.g.label)); cn.appendChild(el('small', '', x.n + (x.n === 1 ? ' repo' : ' repos')));
+      const ct = el('span', 'ct'); const cf = el('span', 'cf'); cf.style.width = (100 * x.total / mx) + '%';
+      [['d-own', x.own], ['d-un', x.un], ['d-git', x.git], ['d-ign', x.ign]].forEach(p => {
+        if (!(p[1] > 0) || !(x.total > 0)) return;
+        const i = el('i', p[0]); i.style.width = (100 * p[1] / x.total) + '%'; cf.appendChild(i);
+      });
+      ct.appendChild(cf);
+      const cv = el('span', 'cv'); cv.appendChild(el('b', '', (x.part ? '\u2265 ' : '') + fmtSize(x.total)));
+      cv.appendChild(document.createTextNode((pct > 0 && pct < 1 ? '<1' : Math.round(pct)) + '%'));
+      b.appendChild(cn); b.appendChild(ct); b.appendChild(cv);
+      b.title = x.g.label + ': ' + (x.part ? 'at least ' : '') + fmtSize(x.total) + ' in ' + x.n + (x.n === 1 ? ' repo' : ' repos') + '. ' +
+        (x.un > 0 ? 'Files ' + fmtSize(x.un) + ' (not split), git history ' + fmtSize(x.git) : 'Your files ' + fmtSize(x.own) + ', git history ' + fmtSize(x.git) + ', ignored by git ' + fmtSize(x.ign)) + '. Click to list these repos.';
+      b.onclick = () => { toggleStatus(x.g.key); window.scrollTo({ top: $('list').getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' }); };
+      cat.appendChild(b);
+    });
+  }
+  cat.hidden = !rows.length;
+  updateDiskCat();
+  // the heaviest repos: one click lists that repo
+  const top = have.slice().sort((a, b) => b.sz.total - a.sz.total).slice(0, 3).filter(r => r.sz.total > 0);
+  const tp = $('dtop'); tp.textContent = '';
+  if (top.length > 1) {
+    tp.appendChild(el('span', '', 'Heaviest:'));
+    top.forEach(r => {
+      const c = el('button', 'dchip'); c.type = 'button'; c.title = 'Show only ' + V(r).name;
+      c.appendChild(document.createTextNode(V(r).name)); c.appendChild(el('b', '', fmtSize(r.sz.total)));
+      c.onclick = () => { query = V(r).name; $('q').value = query; render(); window.scrollTo({ top: $('list').getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' }); };
+      tp.appendChild(c);
+    });
+    const go = el('button', 'dchip dgo'); go.type = 'button'; go.appendChild(document.createTextNode('Sort the list by size'));
+    go.onclick = () => { sortBy = 'size'; $('sort').value = 'size'; renderList(); window.scrollTo({ top: $('list').getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' }); };
+    tp.appendChild(go);
+  }
+  tp.hidden = !tp.childNodes.length;
+}
+function updateDiskCat() {
+  document.querySelectorAll('.dcr').forEach(b => {
+    const on = active === b.dataset.key;
+    b.classList.toggle('on', on); b.classList.toggle('dim', active !== 'All' && !on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+function buildHero() {
+  const total = DATA.length;
+  if (META.version) { $('ver').textContent = 'v' + META.version; $('ver2').textContent = 'v' + META.version; }
+  paintScan(); paintSize();
+  $('big').textContent = total;
+  $('unit').textContent = total === 1 ? 'repo on this computer' : (total ? 'repos on this computer' : 'repos found');
+  $('scan2').textContent = fmtWhen(GENERATED) + '. Run the launcher again to refresh.';
+
+  const strip = $('strip'), key = $('key');
+  const counts = GROUPS.map(g => ({ g: g, n: DATA.filter(r => r.status === g.key).length })).filter(x => x.n);
+  counts.forEach((x, i) => {
+    const share = x.n * 100 / total;
+    const pct = share < 1 ? 'under 1%' : Math.round(share) + '%';
+    const b = el('button', 'seg'); b.type = 'button';
+    b.dataset.key = x.g.key; b.dataset.n = x.n;
+    b.style.flexGrow = x.n; b.style.background = x.g.color; b.style.setProperty('--i', i);
+    b.title = x.n + ' ' + x.g.label + ' (' + pct + ')';
+    b.setAttribute('aria-label', x.n + ' ' + x.g.label + ', ' + pct);
+    b.setAttribute('aria-pressed', 'false');
+    b.appendChild(el('span', 'segn', x.n));
+    b.onclick = () => toggleStatus(x.g.key);
+    strip.appendChild(b);
+
+    const k = el('span', 'k'); k.dataset.key = x.g.key;
+    const sw = el('i'); sw.style.background = x.g.color; sw.innerHTML = ico(x.g.icon, 12);
+    k.appendChild(sw); k.appendChild(el('b', '', x.n)); k.appendChild(document.createTextNode(x.g.label));
+    k.onclick = () => toggleStatus(x.g.key);
+    key.appendChild(k);
+  });
+  if (!total) { strip.hidden = true; key.hidden = true; $('toolbar').hidden = true; }
+
+  // duplicates: one more item in the legend, a filter like the others
+  const dupSets = new Set(DATA.filter(r => r.dup).map(r => r.remote.toLowerCase())).size;
+  const nDup = DATA.filter(r => r.dup).length;
+  if (dupSets) {
+    const k = el('span', 'k twice'); k.dataset.dup = '1';
+    const sw = el('i'); sw.innerHTML = ico('copy', 12);
+    k.appendChild(sw); k.appendChild(el('b', '', nDup)); k.appendChild(document.createTextNode('duplicate copies'));
+    k.title = nDup + ' local copies of ' + dupSets + (dupSets === 1 ? ' repo that is' : ' repos that are') + ' kept in more than one folder';
+    k.onclick = () => { wf.dup = !wf.dup; render(); };
+    key.appendChild(k);
+  }
+
+  buildStart(total);
+  buildWork();
+  fitLabels();
+}
+function setWork(key) {
+  wf[key] = !wf[key];
+  if (wf[key]) { if (key === 'clean') { wf.unc = wf.push = wf.pull = wf.unk = false; } else wf.clean = false; }   // "clean" excludes the others
+  render();
+}
+// "Start here": the single most urgent thing, as one line that applies the matching filter
+let START = null;
+function buildStart(total) {
+  const box = $('startbox'); box.textContent = ''; START = null;
+  const c = k => DATA.filter(r => r.status === k).length;
+  const nU = DATA.filter(r => nUnc(r) > 0).length, nP = DATA.filter(r => nAhead(r) > 0).length;
+  const risky = DATA.filter(r => r.status === 'Local only' && nUnc(r) > 0).length;
+  const plural = (n, one, many) => n === 1 ? one : many;
+  const none = () => { active = 'All'; wf = { unc:false, push:false, pull:false, clean:false, unk:false, dup:false }; };
+  let cls = '', icon = 'shield', head = '', tail = '', on = null, act = null;
+  if (!total) { cls = 'info'; icon = 'info'; head = 'Nothing was found in the folders scanned.'; tail = 'Check the folder names, or point the tool at your code folder with -Root.'; }
+  else if (risky) {
+    head = risky + plural(risky, ' repo exists only on this computer and has work pending to commit.', ' repos exist only on this computer and have work pending to commit.'); tail = 'Nothing is backed up.';
+    on = () => active === 'Local only' && wf.unc && !wf.push && !wf.pull && !wf.clean && !wf.unk && !wf.dup;
+    act = () => { const was = on(); none(); if (!was) { active = 'Local only'; wf.unc = true; } render(); };
+  }
+  else if (c('Broken')) {
+    icon = 'xcircle'; head = c('Broken') + plural(c('Broken'), ' repo is broken.', ' repos are broken.'); tail = 'Git cannot read the .git folder.';
+    on = () => active === 'Broken'; act = () => toggleStatus('Broken');
+  }
+  else if (nU || nP) {
+    cls = 'warn'; icon = 'edit'; head = (nU || nP) + ' ' + plural(nU || nP, 'repo has', 'repos have') + (nU ? ' work pending to commit' : ' work pending to push') + '.'; tail = 'Not saved in a commit, or not on the remote yet.';
+    const k = nU ? 'unc' : 'push';
+    on = () => wf[k] && active === 'All'; act = () => { const was = on(); none(); if (!was) wf[k] = true; render(); };
+  }
+  else { cls = 'good'; icon = 'check'; head = 'Nothing needs attention.'; tail = 'Every repo is readable and has a remote' + (HAS_WORK ? ', and nothing is pending to commit or push' : '') + '.'; }
+  const it = el(act ? 'button' : 'div', 'start' + (cls ? ' ' + cls : ''));
+  if (act) { it.type = 'button'; it.title = 'Show these in the list'; }
+  it.appendChild(icoEl(icon, 22));
+  const p = el('p'); p.appendChild(document.createTextNode(head)); if (tail) p.appendChild(el('span', '', tail));
+  it.appendChild(p);
+  if (act) { const g = el('span', 'go'); g.appendChild(el('span', '', 'Show them')); g.appendChild(icoEl('arrow', 14)); it.appendChild(g); it.onclick = act; START = { node: it, on: on, label: g.firstChild }; }
+  box.appendChild(it);
+}
+function updateStart() {
+  if (!START) return;
+  const on = !!START.on();
+  START.node.classList.toggle('on', on); START.node.setAttribute('aria-pressed', on ? 'true' : 'false');
+  START.label.textContent = on ? 'Showing them' : 'Show them';
+}
+// Work state: five tiles, each one a filter
+const WORK_DEFS = [
+  { key:'unc',   icon:'edit',  color:'#fbbf24', label:'Pending to commit', n: () => DATA.filter(r => nUnc(r) > 0).length,    sub: () => 'edits or new files not saved in a commit', tip:'Edits or new files that are not saved in a commit yet (git calls this uncommitted)' },
+  { key:'push',  icon:'up',    color:'#fbbf24', label:'Pending to push', n: () => DATA.filter(r => nAhead(r) > 0).length,  sub: () => 'saved work not on the remote yet',     tip:'Commits that are saved on this computer but not on the remote yet (git calls this unpushed)' },
+  { key:'pull',  icon:'down',  color:'#7dd3fc', label:'Unpulled',   n: () => DATA.filter(r => nBehind(r) > 0).length, sub: () => WORK.fetch ? 'new on the remote, just fetched' : 'new on the remote, as of last fetch', tip:'Commits on the remote that you do not have yet (git: behind). Unpulled means not pulled yet.' },
+  { key:'clean', icon:'check', color:'#4ade80', label:'All good', n: () => DATA.filter(isClean).length,             sub: () => 'nothing to save, push or pull',        tip:'Nothing pending to commit or push, and nothing unpulled' },
+  { key:'unk',   icon:'lock',  color:'#cbd5e1', label:'Couldn\'t check', n: () => DATA.filter(r => r.st && r.st.state !== 'ok').length, off:true,
+    sub: () => {
+      const cnt = k => DATA.filter(r => r.st && r.st.state === k).length;
+      const parts = [[cnt('unsafe'), 'owned by another user'], [cnt('timeout'), 'too slow to answer'], [cnt('error'), 'unreadable']].filter(x => x[0]);
+      return parts.length === 1 ? parts[0][1] : parts.map(x => x[0] + ' ' + x[1]).join(', ');
+    },
+    tip:'Repos whose state could not be read. For one owned by another user, its Commands panel shows how to mark it safe.' }
+];
+function buildWork() {
+  if (!HAS_WORK) return;
+  $('work').hidden = false;
+  const box = $('workb'); box.textContent = '';
+  WORK_DEFS.forEach(d => {
+    const n = d.n();
+    if (d.off && !n) return;                                  // "Couldn't check" only appears when something was not checked
+    const b = el('button', 'wt' + (d.off ? ' off' : '')); b.type = 'button'; b.dataset.key = d.key; b.dataset.n = n;
+    const th = el('div', 'th'); const ib = el('span', 'ib'); ib.style.setProperty('--ic', d.color); ib.innerHTML = ico(d.icon, 17);
+    th.appendChild(ib); th.appendChild(el('span', 'tl', d.label));
+    b.appendChild(th); b.appendChild(el('div', 'tn', n)); b.appendChild(el('div', 'ts', d.sub()));
+    b.title = d.tip;
+    b.onclick = () => setWork(d.key);
+    box.appendChild(b);
+  });
+  const failed = DATA.filter(r => r.st && (r.st.fetch === 'failed' || r.st.fetch === 'timeout')).length;
+  const note = $('workn'); note.textContent = '';
+  note.appendChild(document.createTextNode('Click a tile to filter. '));
+  if (WORK.fetch) note.appendChild(document.createTextNode('Each repo was fetched when this report was made' + (failed ? ', except ' + failed + (failed === 1 ? ' that' : ' that') + ' could not be reached. ' : '. ')));
+  else { note.appendChild(document.createTextNode('Unpulled is as of each repo\'s last fetch; run with ')); note.appendChild(el('span', 'nw', '-Fetch')); note.appendChild(document.createTextNode(' to refresh it. ')); }
+  if (WORK.noUntracked) note.appendChild(document.createTextNode('New files never added to git are not counted. '));
+}
+function updateWork() {
+  document.querySelectorAll('.wt').forEach(b => {
+    const on = !!wf[b.dataset.key];
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.disabled = (+b.dataset.n === 0) && !on;
+  });
+  const dk = document.querySelector('.k.twice'); if (dk) dk.classList.toggle('on', !!wf.dup);
+}
+function clearFilters() {
+  active = 'All'; wf = { unc:false, push:false, pull:false, clean:false, unk:false, dup:false }; query = ''; $('q').value = '';
+  render();
+}
+// show a count inside a segment only when it fits
+function fitLabels() {
+  document.querySelectorAll('.seg').forEach(s => {
+    s.classList.toggle('nolabel', s.offsetWidth < 22 + 9 * String(s.dataset.n).length);
+  });
+}
+function updateStrip() {
+  document.querySelectorAll('.seg, .k').forEach(s => {
+    const on = active === s.dataset.key;
+    s.classList.toggle('on', on && s.classList.contains('seg'));
+    s.classList.toggle('dim', active !== 'All' && !on);
+    if (s.classList.contains('seg')) s.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
+// Hide private details: switches every name, folder and account on the page to its placeholder
+function paintPrivacy() {
+  const b = $('priv');
+  b.hidden = !!META.redacted;                     // a shareable copy has nothing to reveal
+  b.classList.toggle('on', HIDE);
+  b.setAttribute('aria-pressed', HIDE ? 'true' : 'false');
+  b.innerHTML = HIDE ? ICON_EYE : ICON_EYE_OFF;
+  b.appendChild(el('span', '', HIDE ? 'Show real details' : 'Hide private details'));
+  b.title = HIDE ? 'Show the real names, folders and accounts again' : 'Replace names, folders and accounts with placeholders, for sharing a screenshot';
+  $('privacy').hidden = !HIDE;
+  paintSize();
+  $('privtxt').textContent = META.demo
+    ? 'SYNTHETIC DEMO DATA. Names, paths, remotes, Git states, dates and sizes are fictional. Commands are safe examples only.'
+    : (META.redacted ? 'This is a shareable copy. Names, folders and accounts are placeholders, and the real values are not in this file.' : 'Private details are hidden. Names, folders and accounts are placeholders.');
+  paintScan();
+}
+function render() {
+  renderFilters(); renderList(); updateStrip(); updateWork(); updateStart(); updateDiskCat();
+}
+$('howbtn').onclick = () => { const h = $('how'); h.hidden = !h.hidden; $('howbtn').setAttribute('aria-expanded', h.hidden ? 'false' : 'true'); };
+$('clr').onclick = clearFilters;
+$('sortbox').hidden = !HAS_SIZE;
+$('sort').onchange = () => { sortBy = $('sort').value; renderList(); };
+$('q').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderList(); });
+buildHero();
+paintPrivacy();
+render();
+if (window.matchMedia && matchMedia('(min-width:1001px)').matches) $('q').focus({ preventScroll: true });   // not on phones: it would scroll past the top section
+$('priv').onclick = () => {
+  HIDE = !HIDE;
+  if (HIDE) { query = ''; $('q').value = ''; }    // what was typed in the search box could be a real name
+  paintPrivacy(); renderList();
+};
+window.addEventListener('resize', fitLabels);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLabels);
+if ('IntersectionObserver' in window) {
+  new IntersectionObserver(es => {
+    $('toolbar').classList.toggle('stuck', !es[0].isIntersecting && es[0].boundingClientRect.top < 0);
+  }).observe($('sentinel'));
+}
+</script>
+</body>
+</html>
