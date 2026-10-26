@@ -97,7 +97,8 @@ Each repo shows the space its folder uses, split three ways:
 
 - The numbers add up file sizes, like the folder size Explorer or Finder shows. The space the drive reserves is a little higher.
 - Reading only: nothing is changed. Links and shortcuts are not followed, so a folder is never counted twice.
-- Each repo has 60 seconds. If it takes longer (or some folders cannot be read) the size is shown as **at least** (≥).
+- A repo that sits inside another listed repo is not counted in the outer repo; it has its own row, so nothing is counted twice.
+- Each repo has 60 seconds. Your files are measured first, then git history, then ignored files, so a slow `node_modules` can only cut its own number short. If a part takes longer (or some folders cannot be read) that part, and the total, is shown as **at least** (≥).
 - A repo git will not open (owned by another user, or broken) is shown as one number without the ignored-files split.
 - Sizes stay visible in the private view, because they do not identify anything.
 - **Sort > Largest first** orders repos by size inside each group. The **Disk space** card under the work-state tiles shows the total, the split (your files, git history, ignored by git, not split), a **By category** list with the space each category uses (click a row to list those repos) and the three heaviest repos.

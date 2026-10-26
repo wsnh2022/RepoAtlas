@@ -537,33 +537,39 @@ if (-not $NoStatus -and $workList.Count -gt 0) {
 # ---- size on disk ----
 # How much space each repo uses, split three ways: its own files, git's history (.git) and files git ignores
 # (node_modules, build output, .env and so on). Read-only: it only lists folders and adds up file sizes (the size of
-# the data, as Explorer and Finder show it, not the disk blocks). It does not follow links, and each repo has a time
-# limit, after which the number is marked "at least". The list of ignored files comes from git itself, so it follows
-# each repo's own .gitignore rules.
+# the data, as Explorer and Finder show it, not the disk blocks). It does not follow links (a link as the ignored folder
+# itself included), leaves out repos that sit inside another listed repo (they have their own row), and each repo has a
+# time limit, after which the number is marked "at least". The parts are measured own files first, then .git, then ignored
+# folders, so a time-out cuts the biggest, least important part (and says which). The list of ignored files comes from
+# git itself, so it follows each repo's own .gitignore rules.
 $sizeTimeoutSec = 60
 $sHook = if ($env:REPOATLAS_SIZE_TIMEOUT_SEC) { $env:REPOATLAS_SIZE_TIMEOUT_SEC } else { $env:FINDREPOS_SIZE_TIMEOUT_SEC }
 if ($sHook -match '^\d{1,4}$') { $sizeTimeoutSec = [int]$sHook }   # test hook
 $sizeWorker = {
-    param([string]$gitExe, [string]$path, [bool]$askGit, [int]$limitMs)
+    param([string]$gitExe, [string]$path, [bool]$askGit, [int]$limitMs, [string[]]$nestedRepos)
     $clock   = [System.Diagnostics.Stopwatch]::StartNew()
-    $flag    = @{ partial = $false }      # a table, so the helper function can set it
+    $cut     = @{}                        # which parts ran out of time or hit an unreadable folder ('own', 'git', 'ign'); a table, so the helper function can set it
     $known   = @('node_modules', 'venv', '.venv', 'env', '__pycache__', 'dist', 'build', 'target', 'out', '.next', '.nuxt', '.gradle', '.cache', 'coverage', 'bin', 'obj', 'vendor', '.tox', '.pytest_cache', 'Pods', 'DerivedData')
+    $skip    = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)   # never counted by the folder walk
+    $nest    = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)   # other repos inside this one (they are listed, and sized, on their own)
 
-    # sums the files under one folder; returns bytes. Stops quietly at the time limit.
-    function Measure-Tree([string]$root) {
+    # sums the files under one folder; returns bytes. Does not enter links or anything in $skip. Stops quietly at the time limit;
+    # $phase is remembered when the number is cut short, so the report can say which part is a minimum.
+    function Measure-Tree([string]$root, [string]$phase) {
         $sum = [long]0
         $stack = New-Object System.Collections.Generic.Stack[string]
         $stack.Push($root)
         while ($stack.Count -gt 0) {
-            if ($clock.ElapsedMilliseconds -gt $limitMs) { $flag.partial = $true; break }
+            if ($clock.ElapsedMilliseconds -gt $limitMs) { $cut[$phase] = $true; break }
             $d = $stack.Pop()
             try {
                 foreach ($e in ([System.IO.DirectoryInfo]$d).EnumerateFileSystemInfos()) {
                     if ($e.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { continue }      # links are not followed
+                    if ($skip.Contains($e.FullName)) { continue }
                     if ($e.Attributes -band [System.IO.FileAttributes]::Directory) { $stack.Push($e.FullName) }
                     else { $sum += ([System.IO.FileInfo]$e).Length }
                 }
-            } catch { $flag.partial = $true }                                                         # unreadable folder: the number is a minimum
+            } catch { $cut[$phase] = $true }                                                          # unreadable folder: the number is a minimum
         }
         return $sum
     }
@@ -597,11 +603,13 @@ $sizeWorker = {
 
     try { $path = [IO.Path]::GetFullPath($path) } catch { }     # same spelling as the folder listing gives back, so paths compare equal
     $gitDir = [IO.Path]::Combine($path, '.git')
-    $gitBytes = [long]0
-    if ([IO.Directory]::Exists($gitDir)) { $gitBytes = Measure-Tree $gitDir }
+    $gitIsDir = [IO.Directory]::Exists($gitDir)
+    $elsewhere = (-not $gitIsDir) -and [IO.File]::Exists($gitDir)    # a linked worktree or submodule: its history is kept in another folder
+    [void]$skip.Add($gitDir)
+    foreach ($n in $nestedRepos) { if ($n) { [void]$nest.Add($n); [void]$skip.Add($n) } }
 
     # ignored paths -> full path set, so the main walk can skip them and they are counted once, under "ignored"
-    $skip = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $entries = New-Object System.Collections.Generic.List[object]
     $ign  = @{}
     $ignBytes = [long]0
     # git can list a folder AND the ignored folders inside it; keep only the innermost entries so nothing is counted twice
@@ -613,32 +621,32 @@ $sizeWorker = {
         $full  = [IO.Path]::Combine($path, ($rel.TrimEnd('/') -replace '/', [string][IO.Path]::DirectorySeparatorChar))
         try { $full = [IO.Path]::GetFullPath($full) } catch { }
         [void]$skip.Add($full)
+        $entries.Add([pscustomobject]@{ full = $full; isDir = $isDir })
+    }
+
+    # Measuring order matters because of the time limit: the repo's own files first (everything except .git, the ignored
+    # paths and repos listed separately), then .git, then the ignored folders. A huge node_modules can then only cut
+    # short its own number, never the numbers for your files and git history.
+    $own = Measure-Tree $path 'own'
+    $gitBytes = [long]0
+    if ($gitIsDir) { $gitBytes = Measure-Tree $gitDir 'git' }
+    $ignBytes = [long]0
+    foreach ($en in $entries) {
+        $full = $en.full
         $b = [long]0
         try {
-            if ($isDir -or [IO.Directory]::Exists($full)) { $b = Measure-Tree $full }
-            elseif ([IO.File]::Exists($full)) { $b = ([System.IO.FileInfo]$full).Length }
-        } catch { $flag.partial = $true }
+            if ([IO.Directory]::Exists($full) -or [IO.File]::Exists($full)) {
+                $attr = [IO.File]::GetAttributes($full)
+                if ($attr -band [System.IO.FileAttributes]::ReparsePoint) { }                       # a link (junction or symlink): not followed
+                elseif ($nest.Contains($full)) { }                                                  # another repo: counted in its own row
+                elseif ($en.isDir -or ($attr -band [System.IO.FileAttributes]::Directory)) { $b = Measure-Tree $full 'ign' }
+                else { $b = ([System.IO.FileInfo]$full).Length }
+            }
+        } catch { $cut['ign'] = $true }
         $ignBytes += $b
         $leaf = [IO.Path]::GetFileName($full)
         $key  = if ($known -contains $leaf) { $leaf } else { 'other' }
         if ($ign.ContainsKey($key)) { $ign[$key] += $b } else { $ign[$key] = $b }
-    }
-
-    # the rest: the repo's own files (everything except .git and the ignored paths)
-    $own = [long]0
-    $stack = New-Object System.Collections.Generic.Stack[string]
-    $stack.Push($path)
-    while ($stack.Count -gt 0) {
-        if ($clock.ElapsedMilliseconds -gt $limitMs) { $flag.partial = $true; break }
-        $d = $stack.Pop()
-        try {
-            foreach ($e in ([System.IO.DirectoryInfo]$d).EnumerateFileSystemInfos()) {
-                if ($e.Attributes -band [System.IO.FileAttributes]::ReparsePoint) { continue }
-                if ([string]::Equals($e.FullName, $gitDir, [StringComparison]::OrdinalIgnoreCase) -or $skip.Contains($e.FullName)) { continue }
-                if ($e.Attributes -band [System.IO.FileAttributes]::Directory) { $stack.Push($e.FullName) }
-                else { $own += ([System.IO.FileInfo]$e).Length }
-            }
-        } catch { $flag.partial = $true }
     }
     # git would not open this repo, so ignored files could not be told apart: report the files as one unsplit number
     $un = [long]0
@@ -646,7 +654,7 @@ $sizeWorker = {
     [pscustomobject]@{
         total = [long]($own + $un + $gitBytes + $ignBytes); own = [long]$own; un = [long]$un; git = [long]$gitBytes; ign = [long]$ignBytes
         parts = @($ign.GetEnumerator() | Where-Object { $_.Value -gt 0 } | Sort-Object Value -Descending | ForEach-Object { [pscustomobject]@{ n = [string]$_.Key; b = [long]$_.Value } })
-        listed = $listed; partial = [bool]$flag.partial
+        listed = $listed; partial = [bool]$cut.Count; cut = @($cut.Keys); nest = [int]$nest.Count; elsewhere = [bool]$elsewhere
     }
 }
 
@@ -654,11 +662,17 @@ if (-not $NoSize -and $found.Count -gt 0) {
     $pool = [runspacefactory]::CreateRunspacePool(1, [Math]::Min(8, [Math]::Max(2, [Environment]::ProcessorCount)))
     $pool.Open()
     $jobs = @()
+    # repos that sit inside another listed repo are sized on their own row, so the outer repo leaves them out
+    $fullOf = @{}
+    foreach ($r in $found) { $fullOf[$r.path] = try { [IO.Path]::GetFullPath($r.path).TrimEnd('\', '/') } catch { [string]$r.path } }
+    $dirSep = [string][IO.Path]::DirectorySeparatorChar
     try {
         foreach ($r in $found) {
+            $me = $fullOf[$r.path]
+            $inside = [string[]]@($fullOf.Values | Where-Object { $_ -ne $me -and $_.StartsWith($me + $dirSep, [StringComparison]::OrdinalIgnoreCase) })
             $ps = [powershell]::Create(); $ps.RunspacePool = $pool
             [void]$ps.AddScript($sizeWorker.ToString()).AddArgument($git.Source).AddArgument($r.path).
-                      AddArgument([bool]($r.status -ne 'Broken' -and $r.status -ne 'Error')).AddArgument([int]($sizeTimeoutSec * 1000))
+                      AddArgument([bool]($r.status -ne 'Broken' -and $r.status -ne 'Error')).AddArgument([int]($sizeTimeoutSec * 1000)).AddArgument($inside)
             $jobs += [pscustomobject]@{ rec = $r; ps = $ps; handle = $ps.BeginInvoke() }
         }
         while ($true) {
@@ -1511,9 +1525,14 @@ function fmtSize(n) {
   return (n >= 100 || i === 0 ? Math.round(n) : n.toFixed(1)) + ' ' + u[i];
 }
 const sizeLabel = z => (z.partial ? 'at least ' : '') + fmtSize(z.total);
+// a part that ran out of time (or had unreadable folders) is shown as a minimum, not as a firm number
+const partSize = (z, k, v) => ((z.cut || []).indexOf(k) >= 0 ? '≥ ' : '') + fmtSize(v);
+const nestNote = z => z.nest > 0 ? z.nest + (z.nest === 1 ? ' repo' : ' repos') + ' inside this folder ' + (z.nest === 1 ? 'is' : 'are') + ' not counted here (listed on their own)' : '';
 function sizeBreakdown(z) {
-  if (z.un > 0) return 'Files ' + fmtSize(z.un) + ' (git would not open this folder, so they are not split), git history ' + fmtSize(z.git);
-  return 'Your files ' + fmtSize(z.own) + ', git history ' + fmtSize(z.git) + ', ignored by git ' + fmtSize(z.ign);
+  const hist = z.elsewhere ? 'git history is kept in another folder' : 'git history ' + partSize(z, 'git', z.git);
+  const tail = nestNote(z) ? '. ' + nestNote(z) : '';
+  if (z.un > 0) return 'Files ' + partSize(z, 'own', z.un) + ' (git would not open this folder, so they are not split), ' + hist + tail;
+  return 'Your files ' + partSize(z, 'own', z.own) + ', ' + hist + ', ignored by git ' + partSize(z, 'ign', z.ign) + tail;
 }
 function sizeCell(r) {
   const z = r.sz; if (!z) return el('div', 'sz');
@@ -1535,14 +1554,16 @@ function sizeBox(r) {
   box.appendChild(el('div', 'ch', 'Space on disk: ' + sizeLabel(z) + (z.partial ? ' (some folders were too big or unreadable)' : '')));
   const l = el('div', 'szl');
   const row = (cls, name, val) => { const i = el('i', cls); l.appendChild(i); l.appendChild(el('span', '', name)); l.appendChild(el('span', '', val)); };
-  if (z.un > 0) row('s-un', 'Files (not split: git would not open this folder)', fmtSize(z.un));
-  else          row('s-own', 'Your files', fmtSize(z.own));
-  row('s-git', 'Git history (.git folder)', fmtSize(z.git));
+  if (z.un > 0) row('s-un', 'Files (not split: git would not open this folder)', partSize(z, 'own', z.un));
+  else          row('s-own', 'Your files', partSize(z, 'own', z.own));
+  if (z.elsewhere) row('s-git', 'Git history (kept in another folder)', '–');
+  else             row('s-git', 'Git history (.git folder)', partSize(z, 'git', z.git));
   if (!(z.un > 0)) {
     const parts = (z.parts || []).filter(p => p.b > 0).map(p => p.n + ' ' + fmtSize(p.b)).join(', ');
-    row('s-ign', 'Ignored by git' + (parts ? ' (' + parts + ')' : ''), fmtSize(z.ign));
+    row('s-ign', 'Ignored by git' + (parts ? ' (' + parts + ')' : ''), partSize(z, 'ign', z.ign));
   }
   box.appendChild(l);
+  if (nestNote(z)) box.appendChild(el('p', '', nestNote(z).charAt(0).toUpperCase() + nestNote(z).slice(1) + ', so no space is counted twice.'));
   if (!(z.un > 0)) box.appendChild(el('p', '', 'Ignored files are things git is told to skip: usually downloads and build output that can be recreated (node_modules, build folders), but sometimes private files such as .env or a local database. Check before deleting.'));
   return box;
 }
